@@ -16,7 +16,16 @@
 ##RabbitMQ的Hello World
 
 
-##RabbitMQ几种队列形式
+##RabbitMQ的工作队列
+
+
+##RabbitMQ的PUB/SUB队列
+
+
+##RabbitMQ的队列路由
+
+
+##RabbitMQ的RPC远程过程调用
 
 	
 ##基于RabbitMQ的Node.js和Python通信实例
