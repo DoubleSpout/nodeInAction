@@ -303,6 +303,29 @@ Nginx（发音同engine x）是一款由俄罗斯程序员Igor Sysoev所开发�
 我们成功的利用环境变量连接上了一台给我们提供服务的`redis`数据库`Container`，用同样的方法，我们可以在程序里连接其他数据库，比如`mysql`或者`mongodb`等。
 
 ##不要用ssh连接到你的Container盒子
+学习了前面几个章节，相信读者已经不算是一个`Docker`新手了，越来越多的情况，会让你想到：“怎么进入到我的`Container`中去呢？”，其他人会告诉他：“ 在你的`Container`里面装一个`ssh server`，这样你就可以连入你的`Container`了。” 但是这是一种糟糕的做法，下面我将告诉大家为什么这么做是错误的，万不得已，我们能用什么方式来替代它。
+
+在`Container`里安装一个`ssh server`是非常诱人的，因为这样我们就可以直接连接`Container`，并且进入它的内部，我们可以使用前面几节学到的端口映射方式，让本地的`ssh`客户端连入`Container`。
+
+所以也不奇怪，人们会建议，在`Container`中创建一个`ssh server`，但是我们在这么做之前需要考虑以下问题。
+
+1、你需要ssh来干什么？
+
+大部分需求是，你要检查日志，做备份，或者重启进程，调整配置，查看服务器情况，下面将介绍如果不使用ssh来做到以上这些事情。
+
+2、你如何来管理密钥和密码？
+
+大部分的可能是，你将你的密钥和密码一起装进你的`Image`中，或者将他们放在文件卷中，想一想如果你要更新你的密钥或者密码，你应该怎么做呢？
+
+如果你把它们装载进`Image`中，那你每次更新都需要重新创建`Image`，重新发布`Image`，然后重启`Container`。这样做不是很优雅。
+
+一个更好的办法是将这些东西放在一个文件卷标中，它能工作，但是也有显著的缺点，你必须保证你的`Container`没有对这个文件卷标有写的权限，否则可能会污染你的密钥和密码，从而造成你无法登录这个`Containe`r。而且事情可能因为你为多个`Container`共享这些东西而变的更加难以管理。
+
+3、你如何管理你的密码升级
+`SSH server`是非常安全的，但是一旦你的密钥或密码泄漏，你不得不升级所有使用`SSH`的`Container`，并且重启他们。这也可能让`memcache`这样的内存缓存服务器的缓存将全部丢失，你不得不重建缓存。
+
+4、你是否需要加入`SSH server`就能工作？
+不是的，你还需要加入进程管理软件，`Monit`或`Supervisor`等监控软件，让应用开启多个进程运行。换而言之，你把一个简单的`Container`转变为一个复杂的东西了。如果你的应用停止了，你不得不从你的进程管理软件那里获得信息，因为`Docker`只能管理单进程。
 
 
 
@@ -324,3 +347,5 @@ Nginx（发音同engine x）是一款由俄罗斯程序员Igor Sysoev所开发�
 #参考文献
 - <https://www.docker.com/whatisdocker> what is docker
 - <http://www.cbinews.com/software/news/2015-01-20/228094.htm> 2015：Docker将走向深入应用
+- <http://blog.docker.com/2014/06/why-you-dont-need-to-run-sshd-in-docker/> why you dont need to run sshd in docker
+- <http://jpetazzo.github.io/2014/06/23/docker-ssh-considered-evil/> docker ssh considered evil
