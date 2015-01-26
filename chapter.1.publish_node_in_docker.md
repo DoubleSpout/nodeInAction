@@ -208,7 +208,7 @@ Nginx（发音同engine x）是一款由俄罗斯程序员Igor Sysoev所开发�
 
 命令中的参数，其中`-i`表示同步`Container`的`stdin`，`-t`表示同步`Container`的输出。
 
-上面我们执行了2个`docker run`的任务，其实也就创建了2个独立的`Container`，我们通过命令`docker ps -a`就可以列出所有我们创建过的`Container`了，显示因为版面的原因，做了些修改
+上面我们执行了2个`docker run`的任务，其实也就创建了2个独立的`Container`，我们通过命令`docker ps -a`就可以列出所有我们创建过的`Container`了，因为版面显示的原因，我做了部分修改，把`COMMAND`改短了。
 
 	CONTAINER ID   IMAGE     COMMAND  CREATED     STATUS        PORTS        NAMES
 	026ec6c8802c   centos:7  ...      4 minutes   Up 4 minutes               focused_bartik 
@@ -226,16 +226,84 @@ Nginx（发音同engine x）是一款由俄罗斯程序员Igor Sysoev所开发�
 ##文件卷标加载
 上一节我们学习了`Container`的基本概念，并启动了几个输出`Hello World`的例子，初步理解了`Container`的朋友，可能会把`Docker`的`Container`理解为已给虚拟机，虽然这并不完全正确，但是在本节我不会去纠正他，这样理解对我们深入学习`Docker`是有所帮助的，在接下来的一节，会专门针对这个问题进行讨论。
 
+我们可能有这样的需求，应用程序跑在`Container`里，但是日志我们不想记录在里面，因为万一`Image`升级，我们就必须重新执行`docker run`命令，这样日志文件处理就比较麻烦了，而且记录在`Container`文件系统里的日志也不方便我们查看。这时候就需要将主机的文件卷标挂载到`Container`中去了，在`Container`中写入和读取的某个文件目录，其实就是主机的文件，我们通过参数`-v`把主机文件映射到`Container`中。
+	
+	$ docker run --rm=true -i -t --name=ls-volume -v /etc/:/opt/etc/ centos ls /opt/etc
+	boot2docker  hostname     ld.so.conf     passwd-      securetty  sysconfig
+	default      hosts        mke2fs.conf    pcmcia       services   sysctl.conf
+	fstab        hosts.allow  modprobe.conf  profile      shadow     udev
+	group        hosts.deny   motd           profile.d    shadow-    version
+	group-       init.d       mtab           protocols    shells
+	gshadow      inittab      netconfig      rc.d         skel
+	gshadow-     issue        nsswitch.conf  resolv.conf  ssl
+	host.conf    ld.so.cache  passwd         rpc          sudoers
 
+参数`-v`后面的冒号左侧部分是本地主机路径，冒号右侧是对应`Container`中的路径，`--rm=true`表示这个`Container`运行结束后自动删除。
 
+如果想要挂载后的文件是只读，需要在这样挂载。
 
+	-v /etc/:/opt/etc/:ro #read only
 
+我们也可以挂载一个已经存在的`Container`中的文件系统，需要用到`--volumes-from`参数，我们先创建一个`Container`，它共享`/etc/`目录给其他`Container`。
 
+	$ sudo docker run -i -t -p 1337:1337 --name=etc_share -v /etc/ centos mkdir /etc/my_share && /bin/sh -c "while true; do echo hello world; sleep 1; done"
+
+参数`-p`表示端口映射，上面的命令将`Container`的1337端口映射到主机的1337端口，对外共享`/etc/`目录，给这个`Conatiner`取名字为`etc_share`。
+
+然后我们启动一个`ls_etc`的`Container`来挂载并打印`etc_share`共享的目录。
+	
+	$ sudo docker run --rm=true -i -t --volumes-from etc_share --name=ls_etc centos ls /etc
+	...	
+	my_share       pki             rc0.d           rpc        shells              tmpfiles.d
+	...
+
+我们可以看到，这个`ls_etc`这个`Container`打印出来的`/etc`目录是包含我们之前在`etc_share`这个`Container`中创建的目录`my_share`的。	
 
 ##将多个Container盒子连接起来
+上一节我们学习了如何将主机或者`Container`的文件系统挂载起来，本节我们将学习把各个`Container`连接在一起，发挥`Docker`的魅力。
 
+我现在先下载一个`redis`数据库`Image`，这是使用`Docker`的常规做法，数据库单独用一个`Image`，程序一个`Image`，利用`Docker`的`link`属性将他们连接起来，配合使用。
+
+	$ sudo docker pull redis #下载官方的redis镜像，耐心等待一段时间
+
+接着我们执行命令，启动`redis`镜像的`Container`，开启`redis-server`持久化服务。
+
+	docker run --name redis-server -d redis redis-server --appendonly yes
+
+然后我们再启动一个`redis`镜像的`Container`作为客户端连接我们刚才启动的`redis-server`
+
+	docker run -rm=true -it --link redis-server:redis --rm redis /bin/bash
+
+执行上面的命令后，我们就进入了`Container`内部的`bash`，可以直接在里面执行一些`linux`的命令。
+
+	redis@7441b8880e4e:/data$ env
+
+当前命令行在主机中还是在`Container`中，主要根据`$`符号左侧的用户名来区分，上面的命令将打印系统的环境变量，输出如下。
+
+	REDIS_PORT_6379_TCP_PROTO=tcp
+	HOSTNAME=7441b8880e4e
+	TERM=xterm
+	REDIS_NAME=/boring_perlman/redis
+	REDIS_PORT_6379_TCP_ADDR=172.17.0.34    #redis服务器ip
+	REDIS_PORT_6379_TCP_PORT=6379                #redis服务器端口
+	PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+	PWD=/data
+	REDIS_PORT_6379_TCP=tcp://172.17.0.34:6379
+	SHLVL=1
+	REDIS_PORT=tcp://172.17.0.34:6379
+	HOME=/
+	_=/usr/bin/env
+
+	$ redis-cli -h "$REDIS_PORT_6379_TCP_ADDR" -p "$REDIS_PORT_6379_TCP_PORT"
+	$ 172.17.0.34:6379> set a 1 #成功连入redis数据库服务器
+	OK
+	$ 172.17.0.34:6379> get a
+	"1"
+
+我们成功的利用环境变量连接上了一台给我们提供服务的`redis`数据库`Container`，用同样的方法，我们可以在程序里连接其他数据库，比如`mysql`或者`mongodb`等。
 
 ##不要用ssh连接到你的Container盒子
+
 
 
 ##配置我的DockerImages镜像和发布
