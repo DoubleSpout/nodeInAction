@@ -272,7 +272,7 @@ Nginx（发音同engine x）是一款由俄罗斯程序员Igor Sysoev所开发�
 
 然后我们再启动一个`redis`镜像的`Container`作为客户端连接我们刚才启动的`redis-server`
 
-	docker run -rm=true -it --link redis-server:redis --rm redis /bin/bash
+	docker run --rm=true -it --link redis-server:redis redis /bin/bash
 
 执行上面的命令后，我们就进入了`Container`内部的`bash`，可以直接在里面执行一些`linux`的命令。
 
@@ -281,17 +281,23 @@ Nginx（发音同engine x）是一款由俄罗斯程序员Igor Sysoev所开发�
 当前命令行在主机中还是在`Container`中，主要根据`$`符号左侧的用户名来区分，上面的命令将打印系统的环境变量，输出如下。
 
 	REDIS_PORT_6379_TCP_PROTO=tcp
-	HOSTNAME=7441b8880e4e
+	REDIS_ENV_REDIS_DOWNLOAD_URL=http://download.redis.io/releases/redis-2.8.19.tar.gz
+	HOSTNAME=7ff5092b69fa
+	REDIS_ENV_REDIS_DOWNLOAD_SHA1=3e362f4770ac2fdbdce58a5aa951c1967e0facc8
 	TERM=xterm
-	REDIS_NAME=/boring_perlman/redis
-	REDIS_PORT_6379_TCP_ADDR=172.17.0.34    #redis服务器ip
-	REDIS_PORT_6379_TCP_PORT=6379                #redis服务器端口
+	REDIS_DOWNLOAD_URL=http://download.redis.io/releases/redis-2.8.19.tar.gz
+	REDIS_NAME=/trusting_mayer/redis
+	REDIS_PORT_6379_TCP_ADDR=172.17.0.16
+	REDIS_PORT_6379_TCP_PORT=6379
 	PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 	PWD=/data
-	REDIS_PORT_6379_TCP=tcp://172.17.0.34:6379
+	REDIS_PORT_6379_TCP=tcp://172.17.0.16:6379
+	REDIS_PORT=tcp://172.17.0.16:6379
+	HOME=/root
 	SHLVL=1
-	REDIS_PORT=tcp://172.17.0.34:6379
-	HOME=/
+	REDIS_VERSION=2.8.19
+	REDIS_DOWNLOAD_SHA1=3e362f4770ac2fdbdce58a5aa951c1967e0facc8
+	REDIS_ENV_REDIS_VERSION=2.8.19
 	_=/usr/bin/env
 
 	$ redis-cli -h "$REDIS_PORT_6379_TCP_ADDR" -p "$REDIS_PORT_6379_TCP_PORT"
@@ -309,7 +315,7 @@ Nginx（发音同engine x）是一款由俄罗斯程序员Igor Sysoev所开发�
 
 所以也不奇怪，人们会建议，在`Container`中创建一个`ssh server`，但是我们在这么做之前需要考虑以下问题。
 
-1、你需要ssh来干什么？
+1、你需要`ssh`来干什么？
 
 大部分需求是，你要检查日志，做备份，或者重启进程，调整配置，查看服务器情况，下面将介绍如果不使用ssh来做到以上这些事情。
 
@@ -327,9 +333,232 @@ Nginx（发音同engine x）是一款由俄罗斯程序员Igor Sysoev所开发�
 4、你是否需要加入`SSH server`就能工作？
 不是的，你还需要加入进程管理软件，`Monit`或`Supervisor`等监控软件，让应用开启多个进程运行。换而言之，你把一个简单的`Container`转变为一个复杂的东西了。如果你的应用停止了，你不得不从你的进程管理软件那里获得信息，因为`Docker`只能管理单进程。
 
+但是不使用`ssh`，我们改如何做以下事情呢？
+
+1、备份我的数据
+你的数据必须是一个`volumn`，这样你可以启动另外一个`Container`，并且通过`--volumes-from`来共享你的应用的`Container`的数据，这个新的`Container`会来处理数据备份的事情。额外的好处，如果只对你的数据文件（比如：日志）进行压缩长久保存，那完全可以在一个新的`Container`中处理，这样你的应用`Container`就是干净的。
+
+2、检查日志
+使用文件`volumn`，和之前一样的方法，重新启动一个日志分析的`Container`，让它来处理日志和检查日志。
+
+3、重启我的应用服务
+这个问题更容易，我们只需要重启`Container`即可。
+
+4、修改我的配置文件
+如果你正在执行一个持久的配置变更，你最好把他的改变放在`Image`中，如果你又启动一个`Container`，那么服务还是使用的老的配置，你的配置变更将丢失。“但是我需要在应用存活期间，改变我的配置，例如增加一个新的虚拟站点”
+这样的话还是需要使用`volumn`来处理，这样所有的应用`Container`都可以快速的临时变更配置。
+
+5、调试我的应用
+这可能是唯一需要进入`Container`的场景了，这样你就需要`nsenter`软件
+
+下面我就利用类似机器猫的任意门软件`nsenter`,进入到`Container`中去。`nsenter`是一个小的工具，用来进入现有的命名空间，命名空间是什么？他们是container的重要组成部分。简单点说，通过使用`nsenter`你可以进入一个已经存在的`Container`中，尽管这个`Container`没有安装`ssh server`或者其他类似软件。
+
+`nsenter`项目地址：[https://github.com/jpetazzo/nsenter](https://github.com/jpetazzo/nsenter)
+
+我们可以通过命令来安装`nsenter`，这个命令会自己去下载`nsenter`镜像，并且这条命令会把`nsenter`命令安装到主机的`/usr/bin`中，我们就可以很方便的使用它了。
+
+	$ sudo docker run -v /usr/local/bin:/target jpetazzo/nsenter
+
+我们先要找出需要进入的`Container`的`pid`。
+
+	PID=$(docker inspect --format {{.State.Pid}} <container_name_or_ID>)
+
+命令实例：
+	
+	$ sudo docker inspect --format {{.State.Pid}} 9479
+	7026
+
+这里我们得到了`id`为`9479`的`Container`它的`pid`号为7026，这句话有点拗口，其实我们只需关心7026这个`pid`号就可以了。接着我们根据刚才获得的`pid`就能顺利进入到`Container`的内部了。
+
+	$ sudo nsenter --target $PID --mount --uts --ipc --net --pid
+
+这里我们把`$PID`替换为7026即可，命令如下：
+
+	$ sudo nsenter --target 7026 --mount --uts --ipc --net --pid
+
+如果你想要远程访问这个`Container`，可以通过`ssh`链接到你的主机，并且使用`nsenter`连接进入到`Container`，所以大家是不是觉得完全没有必要在`Container`里
+
+如果在`pull`镜像``出现错误，那估计是`CentoOS`内核的版本，所以尽量使用较新的内核版本来启动`Docker`，如出现下面的错误可能就是内核版本过低。
+	
+	Error pulling image (latest) from jpetazzo/nsenter, Unknown filesystem type on /dev/mapper/...
+
+或者无法进入`Container`的错误，也是因为内核过低，没有正确安装镜像所致。
+
+	nsenter: cannot open /proc/27797/ns/ipc: No such file or directory
+
+如果运行安装`nsenter`时，出现如下错误：
+
+	$ sudo docker run -v /usr/local/bin:/target jpetazzo/nsenter
+	Installing nsenter to /target
+	cp: cannot create regular file '/target/nsenter': Permission denied
+	Installing docker-enter to /target
+	cp: cannot create regular file '/target/docker-enter': Permission denied
+
+那就需要手动将`Container`里的`nsenter`命令拷贝到`/usr/local/bin`目录下了，先把`jpetazzo/nsenter`运行起来，然后手动进入文件系统，将命令拷贝出来，其中`containid`就是我们使用`docker ps`查到的`id`，目录`devicemapper`是`centos`下的路径名，在`windows`下是`aufs`。
+
+	cp /var/lib/docker/devicemapper/mnt/<containid>/rootfs/nsenter /usr/local/bin/
+	cp /var/lib/docker/devicemapper/mnt/<containid>/rootfs/docker-enter /usr/local/bin/
+
+##配置我的DockerImages镜像和发布应用
+我们已经学习到了很多关于`Docker`的知识了，`Docker`之旅也渐渐接近尾声了，本节我们就要简单制作一个`Node.js`的`Express.js`环境的镜像，通过`pm2`来启动我们的`web`应用，然后发布到`Docker`云上；我们还会使用`redis`数据库来暂存用户的访问次数；在`Node.js`应用前端，我们需要放置一个`Nginx`作为反向代理，现在让我们开始吧。
+
+第一步，我们把需要用到的`Image`镜像统统的都下载到本地，执行如下命令，等待片刻就能下载成功了。
+
+	docker pull redis
+	docker pull node
+	docker pull nginx
+
+执行`docker images`检查一下这些镜像是否都安装完毕，正常会打印出各个镜像列表。
+
+	node                0                   20fbb0b572a2        5 hours ago         705.4 MB
+	node                0.10                20fbb0b572a2        5 hours ago         705.4 MB
+	node                0.10.36             20fbb0b572a2        5 hours ago         705.4 MB
+	node                latest              20fbb0b572a2        5 hours ago         705.4 MB
+	redis               latest              5e0586116d76        5 days ago          110.8 MB
+	redis               2.8.19              5e0586116d76        5 days ago          110.8 MB
+	redis               2                   5e0586116d76        5 days ago          110.8 MB
+	redis               2.8                 5e0586116d76        5 days ago          110.8 MB
+	nginx               1.7                 90081fa15a0c        5 days ago          91.73 MB
+	nginx               1.7.9               90081fa15a0c        5 days ago          91.73 MB
+	nginx               latest              90081fa15a0c        5 days ago          91.73 MB
+	nginx               1                   90081fa15a0c        5 days ago          91.73 MB
+	jpetazzo/nsenter    latest              6ed3da1d7fa6        9 weeks ago         367.7 MB
+
+我们现在本地创建一个一会部署`Node.js`应用的目录，然后写上`package.json`
+
+	$ mkdir /var/node/
+	$ mkdir /var/node/docker_node
+
+在创建我们的应用之前，我们从`node 0.10.36`这个镜像上面开始制作自己的镜像，这个镜像只不过比`node 0.10.36`镜像多了一个`pm2`的命令。运行如下命令，进入到`Container`的命令行，然后我们安装`pm2`软件。如果读者对`Node.js`比较熟悉，相信对`pm2`不会陌生，它是`Node.js`进程管理软件，可以方便的重启进程和查看`Node.js`日志。
+
+	$ sudo docker run -i -t node /bin/bash
+	#进入Container的bash	
+	$ npm install pm2 -g
+	$ pm2 -v
+	0.12.3
+	#从Container的bash退出
+	$ exit
+
+这样我们就成功的在`node 0.10.36`这个镜像的基础上安装了`pm2`，然后我们要把这个新的`Container`保存为镜像，这样以后我们要用到带`pm2`的`Node.js`镜像，只需要下载它就可以了。执行命令，进行登录，然后把镜像`push`到云上，非官方不允许直接提交根目录镜像，所以必须以<用户名>/<镜像名>这样的方式提交，比如`doublespout/node_pm2`这样
+	
+	#查看所有Container，找到刚才的id
+	$ sudo docker ps -a
+	CONTAINER ID  IMAGE   COMMAND       CREATED         STATUS           PORTS      NAMES
+	...
+	7a3e85bfaddf  node:0  "/bin/bash"   5 minutes ago   Exited (130)...             goofy_fermi
+	...
+
+	#使用docker官网注册的用户名和密码进行登录
+	$ sudo docker login
+	Username: <Your Docker Account>
+	Password: 
+	Email:  <Your Email>
+	Login Succeeded
+	
+	#登录成功之后，把Container提交为Images
+	$ sudo docker commit 7a3e doublespout/node_pm2
+	#然后查看Images列表
+	$ sudo docker images node_pm2
+	REPOSITORY          TAG                 IMAGE ID            CREATED              VIRTUAL SIZE
+	node_pm2            latest              9a418757ae2b        About a minute ago   714.8 MB
+
+	#把镜像提交到云上
+	$ sudo docker push doublespout/node_pm2
+	
+等待片刻后，我们的新的镜像就保存到了`Docker`云上，然后我们把本地的`doublespout/node_pm2`删除，试着从云上下载这个镜像。
+
+	$ sudo docker rmi doublespout/node_pm2
+	$ sudo docker images doublespout/node_pm2
+	REPOSITORY          TAG                 IMAGE ID            CREATED             VIRTUAL SIZE
+	#发现是空的，然后我们从云上pull
+
+	$ sudo docker pull doublespout/node_pm2
+	#稍等片刻即可下载完毕
+
+接下来我们将通过`redis`镜像，启动一个`redis`的`Container`，命令如下：
+
+	docker run --name redis-server -d redis redis-server --appendonly yes
+
+然后我们要准备编写`Node.js`代码，实现这个计数访问应用的功能，在`/var/node/docker_node`目录下创建如下的`package.json`文件，这里对自己的依赖写上版本号是比较稳妥的方式，可以免去因为依赖模块升级，造成应用不稳定的情况，实在有必要升级，可以单独升级某几个依赖测试。
+
+	{
+	  "name": "docker_node",
+	  "version": "0.0.1",
+	  "main": "app.js",
+	  "dependencies": {
+	       "express":"4.10.2",
+	       "redis":"0.12.1",
+	       "redis-connection-pool":"0.0.5"
+	   },
+	  "engines": {
+	    "node": ">=0.10.0"
+	  }
+	}
+
+然后我们创建`app.js`，启动并监听8000端口，同时通过`redis`记录访问次数。
+
+	var express = require('express');
+	var reidsPool = require('redis-connection-pool')
+	var app = express();
+	//从环境变量里读取redis服务器的ip地址
+	var redisHost = process.env['REDIS_PORT_6379_TCP_ADDR'] || '127.0.0.1'
+	var redisPort = process.env['REDIS_PORT_6379_TCP_PORT']	|| 6379
+	
+	var reidsClient = reidsPool('myRedisPool', {PORT:redisPort, HOST:redisHost, MAX_CLIENTS:100})
+	
+	app.get('/', function(req, res){
+		  reidsClient.get('access_count', function(err, countNum){
+		  		if(err){
+		  			return res.send('get access count error')
+		  		}
+		  		if(!countNum){
+		  			countNum = 1
+		  		}
+		  		else{
+		  			countNum = parseInt(countNum) + 1
+		  		}
+		  		reidsClient.set('access_count', countNum, function(err){
+		  			if(err){
+			  			return res.send('set access count error')
+			  		}
+			  		res.send(countNum.toString())
+		  		})
+		  })
+	});
+	
+	app.listen(8000);
+
+我们先启动一个`Container`把依赖装一下，命令如下：
+
+	$ sudo docker run --rm -i -t -v /var/node/docker_node:/var/node/docker_node -w /var/node/docker_node/ doublespout/node_pm2 npm install
+
+屏幕会打印依赖安装的过程，等所有`Node.js`的包安装完成后，这个`Container`会自动退出，然后我们进入`/var/node/docker_node/`目录，就可以看到`node_modules`文件夹，说明我们的依赖包安装完毕了。
+
+代码开发完毕，基于刚才我们提交的`doublespout/node_pm2`镜像，我们要启动一个运行这个程序的`Container`，要求这个`Container`有端口映射，文件挂载，并同时加载`redis`的那个`Container`，命令如下：
+	
+	#挂载pm2的日志输出
+	$ mkdir /var/log/pm2
+	#使用pm2启动app应用，但是会有问题哦
+	$ sudo docker run -d --name "nodeCountAccess" -p 8000:8000 -v /var/node/docker_node:/var/node/docker_node -v /var/log/pm2:/root/.pm2/logs/ --link redis-server:redis -w /var/node/docker_node/  doublespout/node_pm2 pm2 start app.js
+
+但是当我们执行`docker ps`后发现这个`Container`并没有启动，这是什么原因呢？因为我们利用`pm2`的守护进程方式启动了应用，所以`Container`会认为进程已经运行结束了，所以自己退出了，这时候我们需要让`pm2`以非守护进程的方式运行在`Container`里就可以了，我们的命令要做一些更改。
+
+	$ sudo docker run -d --name "nodeCountAccess" -p 8000:8000 -v /var/node/docker_node:/var/node/docker_node -v /var/log/pm2:/root/.pm2/logs/ --link redis-server:redis -w /var/node/docker_node/  doublespout/node_pm2 pm2 start --no-daemon app.js
+
+这时候我们再执行`docker ps`，就可以看到`nodeCountAccess`这个名字的`Container`在运行了，使用浏览器打开主机的8000端口，也能看到访问的计数次数，接下来就轮到作为反向代理的`Nginx`出场了。
+
+	
 
 
-##配置我的DockerImages镜像和发布
+
+
+
+如果遇到在`Container`里无法解析域名，则需要手动增加`dns`服务器，方法如下：
+
+	DOCKER_OPTS=" --dns 8.8.8.8"
+	service docker restart
+
+
 
 
 ##什么是Jenkins

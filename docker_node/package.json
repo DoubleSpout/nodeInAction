@@ -1,0 +1,12 @@
+{
+  "name": "docker_node",
+  "version": "0.0.1",
+  "main": "app.js",
+  "dependencies": {
+       "express":"4.10.2",
+       "redis-connection-pool":"0.0.5"
+   },
+  "engines": {
+    "node": ">=0.10.0"
+  }
+}
