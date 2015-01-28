@@ -264,9 +264,9 @@ Nginx（发音同engine x）是一款由俄罗斯程序员Igor Sysoev所开发�
 
 我现在先下载一个`redis`数据库`Image`，这是使用`Docker`的常规做法，数据库单独用一个`Image`，程序一个`Image`，利用`Docker`的`link`属性将他们连接起来，配合使用。
 
-	$ sudo docker pull redis #下载官方的redis镜像，耐心等待一段时间
+	$ sudo docker pull redis:latest #下载官方的redis最新镜像，耐心等待一段时间
 
-接着我们执行命令，启动`redis`镜像的`Container`，开启`redis-server`持久化服务。
+一般我们使用`docker pull`命令后面都会跟着版本号（`2.8.19`截稿时`redis`的最新版）或者`latest`，这样不用重复的去下载这个镜像以前的老版本，可以加快速度。接着我们执行命令，启动`redis`镜像的`Container`，开启`redis-server`持久化服务。
 
 	docker run --name redis-server -d redis redis-server --appendonly yes
 
@@ -402,26 +402,18 @@ Nginx（发音同engine x）是一款由俄罗斯程序员Igor Sysoev所开发�
 ##配置我的DockerImages镜像和发布应用
 我们已经学习到了很多关于`Docker`的知识了，`Docker`之旅也渐渐接近尾声了，本节我们就要简单制作一个`Node.js`的`Express.js`环境的镜像，通过`pm2`来启动我们的`web`应用，然后发布到`Docker`云上；我们还会使用`redis`数据库来暂存用户的访问次数；在`Node.js`应用前端，我们需要放置一个`Nginx`作为反向代理，现在让我们开始吧。
 
-第一步，我们把需要用到的`Image`镜像统统的都下载到本地，执行如下命令，等待片刻就能下载成功了。
+第一步，我们把需要用到的`Image`镜像统统的都下载到本地，执行如下命令，等待片刻就能下载成功了，为了加快下载速度和本书代码的兼容性，我们指定了下载各个镜像的版本，读者可以根据当时的最新版本进行下载。
 
-	docker pull redis
-	docker pull node
-	docker pull nginx
+	docker pull redis:2.8.19
+	docker pull node:0.10.36
 
 执行`docker images`检查一下这些镜像是否都安装完毕，正常会打印出各个镜像列表。
 
-	node                0                   20fbb0b572a2        5 hours ago         705.4 MB
-	node                0.10                20fbb0b572a2        5 hours ago         705.4 MB
+
 	node                0.10.36             20fbb0b572a2        5 hours ago         705.4 MB
 	node                latest              20fbb0b572a2        5 hours ago         705.4 MB
 	redis               latest              5e0586116d76        5 days ago          110.8 MB
 	redis               2.8.19              5e0586116d76        5 days ago          110.8 MB
-	redis               2                   5e0586116d76        5 days ago          110.8 MB
-	redis               2.8                 5e0586116d76        5 days ago          110.8 MB
-	nginx               1.7                 90081fa15a0c        5 days ago          91.73 MB
-	nginx               1.7.9               90081fa15a0c        5 days ago          91.73 MB
-	nginx               latest              90081fa15a0c        5 days ago          91.73 MB
-	nginx               1                   90081fa15a0c        5 days ago          91.73 MB
 	jpetazzo/nsenter    latest              6ed3da1d7fa6        9 weeks ago         367.7 MB
 
 我们现在本地创建一个一会部署`Node.js`应用的目录，然后写上`package.json`
@@ -532,49 +524,225 @@ Nginx（发音同engine x）是一款由俄罗斯程序员Igor Sysoev所开发�
 
 	$ sudo docker run --rm -i -t -v /var/node/docker_node:/var/node/docker_node -w /var/node/docker_node/ doublespout/node_pm2 npm install
 
-屏幕会打印依赖安装的过程，等所有`Node.js`的包安装完成后，这个`Container`会自动退出，然后我们进入`/var/node/docker_node/`目录，就可以看到`node_modules`文件夹，说明我们的依赖包安装完毕了。
+屏幕会打印依赖安装的过程，等所有`Node.js`的包安装完成后，这个`Container`会自动退出，然后我们进入`/var/node/docker_node/`目录，就可以看到`node_modules`文件夹，说明我们的依赖包安装完毕了。如果出现`EACCESS`的权限错误，可以执行如下命令，许可`SELinux`的工作状态，不过这只是临时修改，重启系统后会恢复。
+
+	su -c "setenforce 0"
 
 代码开发完毕，基于刚才我们提交的`doublespout/node_pm2`镜像，我们要启动一个运行这个程序的`Container`，要求这个`Container`有端口映射，文件挂载，并同时加载`redis`的那个`Container`，命令如下：
 	
 	#挂载pm2的日志输出
 	$ mkdir /var/log/pm2
 	#使用pm2启动app应用，但是会有问题哦
-	$ sudo docker run -d --name "nodeCountAccess" -p 8000:8000 -v /var/node/docker_node:/var/node/docker_node -v /var/log/pm2:/root/.pm2/logs/ --link redis-server:redis -w /var/node/docker_node/  doublespout/node_pm2 pm2 start app.js
+	$ sudo docker run -d -h dockernode --name "nodeCountAccess" -p 8000:8000 -v /var/node/docker_node:/var/node/docker_node -v /var/log/pm2:/root/.pm2/logs/ --link redis-server:redis -w /var/node/docker_node/  doublespout/node_pm2 pm2 start app.js
 
 但是当我们执行`docker ps`后发现这个`Container`并没有启动，这是什么原因呢？因为我们利用`pm2`的守护进程方式启动了应用，所以`Container`会认为进程已经运行结束了，所以自己退出了，这时候我们需要让`pm2`以非守护进程的方式运行在`Container`里就可以了，我们的命令要做一些更改。
 
 	$ sudo docker run -d --name "nodeCountAccess" -p 8000:8000 -v /var/node/docker_node:/var/node/docker_node -v /var/log/pm2:/root/.pm2/logs/ --link redis-server:redis -w /var/node/docker_node/  doublespout/node_pm2 pm2 start --no-daemon app.js
 
-这时候我们再执行`docker ps`，就可以看到`nodeCountAccess`这个名字的`Container`在运行了，使用浏览器打开主机的8000端口，也能看到访问的计数次数，接下来就轮到作为反向代理的`Nginx`出场了。
+这时候我们再执行`docker ps`，就可以看到`nodeCountAccess`这个名字的`Container`在运行了，使用浏览器打开主机的8000端口，也能看到访问的计数次数。
 
+接下来就轮到作为反向代理的`Nginx`出场了。
 	
+由于使用`Docker`的`Container`它的ip地址是动态变化的，所以我们想要使用`Nginx`反向代理，配置写起来比较困难，这里我们就暂不使用`Docker`容器来管理`Nginx`了，我们尝试使用`Nginx`的分支版本`openresty`来做反向代理，`openresty`比`Nginx`内置了`ngx-lua`模块，让`Nginx`具有逻辑处理能力了，我们先用`yum`安装依赖，然后编译安装`openresty`。
 
+	yum install -y gcc gcc-c++ kernel-devel
+	yum install -y readline-devel pcre-devel openssl-devel openssl zlib zlib-devel pcre-devel
+	wget http://openresty.org/download/ngx_openresty-1.7.2.1.tar.gz
+	tar -zxvf ngx_openresty-1.7.2.1.tar.gz
+	cd ngx_openresty-1.7.2.1
+	./configure --prefix=/opt/openresty \
+            --with-pcre-jit \
+            --with-ipv6 \
+            --without-http_redis2_module \
+            --with-http_iconv_module \
+            -j2
+	make && make install
+	ln -s /opt/openresty/nginx/sbin/nginx /usr/sbin/
 
+修改`openresty`的默认配置文件，配置文件在`/opt/openresty/nginx/conf/nginx.conf`，我们修改为如下内容，出于篇幅的考虑，此配置文件是精简的配置，不要用于生产环境。
 
+	worker_processes 1;
+	events {
+	    worker_connections  1024;
+	}
+	http {
+	    include       mime.types;
+	    default_type  application/octet-stream;
+	    server_names_hash_bucket_size 64;
+		access_log off;
+	
+	    sendfile        on;
+	    keepalive_timeout  65;
+	
+	    server {
+	        listen 3001;
+	        location / {
+	          proxy_pass http://127.0.0.1:8000;
+	          proxy_redirect default;
+	          proxy_http_version 1.1;
+	          proxy_set_header Upgrade $http_upgrade;
+	          proxy_set_header Connection $http_connection;
+	          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+	          proxy_set_header Host $http_host;
+	        }
+	    }
+	}
 
+执行命令`nginx`就可以将`openresty`运行起来，然后打开浏览器，输入`主机IP:3001`就可以正常访问我们之前启动的`Node.js`访问计数应用了。
 
-如果遇到在`Container`里无法解析域名，则需要手动增加`dns`服务器，方法如下：
+另外如果遇到在`Container`里无法解析域名，则需要手动增加`dns`服务器，方法如下：
 
 	DOCKER_OPTS=" --dns 8.8.8.8"
 	service docker restart
 
-
-
-
 ##什么是Jenkins
+`Jeknins`是一个用`java`开发的开源软件项目，旨在提供一个开放易用的软件平台，使持续集成变成可能，它的前身就是大名鼎鼎的`Hundson`，`Hudson`是收费的商用版本，`Jenkins`是它的一个免费开源的分支，所以我们选择使用`Jenkins`，毕竟能省则省么。
 
+那什么叫做持续集成呢？以下这些概念摘来自`IBM`团队的定义。
+
+随着软件开发复杂度的不断提高，团队开发成员间如何更好地协同工作以确保软件开发的质量已经慢慢成为开发过程中不可回避的问题，持续集成正是针对这一类问题的一种软件开发实践。它倡导团队开发成员必须经常集成他们的工作，甚至每天都可能发生多次集成。而每次的集成都是通过自动化的构建来验证，包括自动编译、发布和测试，从而尽快地发现集成错误，让团队能够更快的开发内聚的软件。
+
+持续集成的核心价值在于：
+
+1、持续集成中的任何一个环节都是自动完成的，无需太多的人工干预，有利于减少重复过程以节省时间、费用和工作量；
+
+2、持续集成保障了每个时间点上团队成员提交的代码是能成功集成的。换言之，任何时间点都能第一时间发现软件的集成问题，使任意时间发布可部署的软件成为了可能；
+
+3、持续集成还能利于软件本身的发展趋势，这点在需求不明确或是频繁性变更的情景中尤其重要，持续集成的质量能帮助团队进行有效决策，同时建立团队对开发产品的信心。
+
+估计读者看完这些定义，对`Jenkins`到底能做什么还是没有什么概念，简而言之，我们利用`Jenkins`持续集成`Node.js`项目之后，就不用每次都登录到服务器，执行`pm2 restart xxx`或者更原始一点的`kill xx`然后`node xxx`，下面是一张已经配置好的某个项目的在`Jenkins`中的截图，我们只需要点击立即构建，就可以自动的从`git`仓库获取代码，然后远程的部署到目标服务器，执行一些安装依赖和测试的命令，最后启动应用。
+
+![](http://7u2pwi.com1.z0.glb.clouddn.com/jenkins_ex1.png)
+
+可能会有朋友说，每次我通过`ssh`登录服务器执行上面的命令也挺方便的，但是当我们的`Node.js`程序不止在一台服务器上，每次部署的重复劳动让人觉得就是一场灾难；当项目有一些用其他语言，例如`Python`或`C++`的程序需要管理，重启的方式和编译的选项我们都要烂熟于心，否则就会出错，为什么不把这一切都自动化呢？
+
+本章的接下来几个小节，就会介绍如何从零开始，搭建一个`Jenkins`的持续集成软件，自动化部署我们之前开发的那个记录访问次数的`Node.js`应用。
 
 ##通过Docker安装和启动Jenkins
+有了`Docker`这个利器，我们省去了好多安装`java`环境数据库等的麻烦，所以安装`Jenkins`异常简单，只需要执行如下一行命令即可。
+	
+	#截稿时，docker中最新版本的jenkins是1.554.1
+	docker pull jenkins:1.554.1
 
+拉取好镜像之后，我们先创建目录，然后就可以启动`Jenkins`的`Container`了，我们要把`Jenkins`的文件存储地址挂载到主机上，万一以后`Jenkins`的服务器重装或者迁移，我们都可以很方便的把之前的项目配置保留，否则就只能进入`Container`的文件系统里去拷贝了。另外一半`Jenkins`会搭建在内网的服务器上，而非生产服务器，如果外网能直接访问，可能会造成一定的风险。
+	
+	#创建本地的Jenkins配置文件目录
+	$ mkdir /var/jenkins_home
+	$ sudo docker run -d --name myjenkins -p 49001:8080 -v /var/jenkins_home:/var/jenkins_home jenkins
+
+这样我们就顺利启动了`Jenkins`的服务，8080端口是`Jenkins`的默认监听端口，我们把它映射到了本地主机的49001端口，注意把搭建`Jenkins`的服务器的`iptables`关闭哦。一切顺利我们就可以看到`Jeknins`的欢迎页面了，建议去`系统管理`->`管理用户`栏目中创建几个用户和权限，方便多人协同操作。
+
+![](http://7u2pwi.com1.z0.glb.clouddn.com/jenkins_ex2.png)
 
 ##配置Jenkins，自动化部署Node.js项目
+我们需要对`Jenkins`进行一些简单的配置，才能让它自动化的部署应用，由于我们的代码是部署在`github`仓库的，所以我们先要对`Jeknins`安装几个插件，让它可以从`github`获取代码，并远程部署到我们生产的服务器上。进入`系统管理`->`管理插件`->`可选插件`，在右上侧的筛选框中输入`git`，并安装`Git Plugin (This plugin integrates GIT with Jenkins.)`这个插件；然后再安装插件`Publish Over SSH (Send build artifacts over SSH)`插件，插件安装完成后，我们需要重新启动`Jenkins`，插件安装完毕后，会自动重启，如果重启失败，可以自进入`Jeknins`的目录`/restart`手动重启。
+	
+	#进入目录手动重启
+	http://192.168.1.116:49001/restart
 
+重启完成之后，我们进入`系统管理`->`系统设置`来对插件进行一下简单的设置，增加远程的服务器配置。如下图，填入我们待发布的生产服务器的Ip地址，`ssh`端口以及用户名密码等信息就可以了。如果远程服务器是通过`key`来登录的，我们还需要把`key`的存放路径写上。
+
+![](http://7u2pwi.com1.z0.glb.clouddn.com/jenkins_ex3.png)
+
+我可以点击`Test Configuration`来测试服务器是否能连接成功，服务器添加完毕之后，我们现在开始创建一个新的项目。
+
+回到`Jenkins`主页，点击左上角`新建`就可以开启一个新项目，给项目起名`node_access_count`，选择`创建一个自由风格的软件项目`，点击`ok`，就进入了此项目的配置页面。
+
+![](http://7u2pwi.com1.z0.glb.clouddn.com/jenkins_ex4.png)
+
+在配置页，我们找到`源码管理`然后填入在`github`上的源码地址之。
+
+![](http://7u2pwi.com1.z0.glb.clouddn.com/jenkins_ex5.png)
+
+点击`ADD`按钮，如图添加`github`帐号，我们就可以通过这个帐号来拉取源代码了。
+
+![](http://7u2pwi.com1.z0.glb.clouddn.com/jenkins_ex6.png)
+
+把配置页往下滚动，在`构建`一栏出，下拉菜单点击展开，如下图选择`Execute shell`。`构建`表示我们如何向生产服务器去发布一个应用，简而言之，就是把我们原来手动要做的操作和要输入的命令，通过配置来自动执行。发布一个`Node.js`的程序由于不需要编译，所以大致的流程如下：
+
+1、`Jenkins`从代码库(`svn`或`git`)获取最新代码；
+
+2、本地将所需的代码打包，需要排除一些文件，比如`.git`文件等等；
+
+3、把代码包通过`ssh`发送到远程的服务器上
+
+4、停止远程服务器的服务，删除远程服务器上的代码，解压新的代码包
+
+5、通过新的`package.json`安装依赖，然后重新启动服务
+
+![](http://7u2pwi.com1.z0.glb.clouddn.com/jenkins_ex7.png)
+
+从代码库获取最新代码是`Jenkins`自动执行的，每次构建都会去做，所以我们不必去配置，接着我们开始第一步，打包最新代码。我们在文本框中输入如下命令，先删除之前的`tar`包，然后重新打包代码。
+
+	rm -rf /var/jenkins_home/jobs/node_access_count/node_access_count.tar.gz
+	tar -zcvf /tmp/node_access_count.tar.gz  -C /var/jenkins_home/jobs/node_access_count/workspace/docker_node . --exclude="*.git"
+	mv /tmp/node_access_count.tar.gz /var/jenkins_home/jobs/node_access_count/workspace/
+
+然后我们需要把代码包发送到远程的生产服务器上，这时候我们需要选择`Send files ...`这一个选项了。
+
+![](http://7u2pwi.com1.z0.glb.clouddn.com/jenkins_ex8.png)
+
+在`SSH SERVER`的下拉菜单中，选择我们刚刚添加的服务器。
+
+在`Source files`一行中，填写我们要发送到远程服务器的文件，我们把刚才打包的文件名填入，这里的工作路径是本项目下的`workspace`，在这里也就是`/var/jenkins_home/jobs/node_access_count/workspace/`，所以我们填入`node_access_count.tar.gz`。
+
+在`Remote directory`一行中，填写发送代码包的远程保存地址，我们这里写入`var/`，还记得我们创建这台服务器时，填入的远程默认地址是`/`这个吗，所以我们发送到这台服务器上的代码包`node_access_count.tar.gz`会被保存在`/var/node_access_count.tar.gz`这个路径下。
+
+接下来就是先把老的代码删除，然后解压缩新的代码，并安装依赖和重启服务，还记得我们之前启动的`Container`叫什么名字吗？我们在`Exec command`一栏中填入如下命令。
+	
+	docker stop nodeCountAccess
+
+	rm -rf /var/node/docker_node/app.js
+	rm -rf /var/node/docker_node/package.json
+	
+	mkdir /var/node
+	mkdir /var/node/docker_node
+	mkdir /var/log/pm2
+
+	tar -xvf /var/node_access_count.tar.gz -C /var/node/docker_node
+
+	sudo docker run --rm -i -t -v /var/node/docker_node:/var/node/docker_node -w /var/node/docker_node/ doublespout/node_pm2 npm install
+	
+	sudo docker run --rm -d --name "nodeCountAccess" -p 8000:8000 -v /var/node/docker_node:/var/node/docker_node -v /var/log/pm2:/root/.pm2/logs/ --link redis-server:redis -w /var/node/docker_node/  doublespout/node_pm2 pm2 start --no-daemon app.js
+
+	rm -rf /var/node_access_count.tar.gz
+	
+下面我们简单说明一下这些命令的含义。
+
+1、`docker stop nodeCountAccess`命令，我们会停止之前的一个运行的`Container`，如果是第一次发布会触发一个错误，没有这个`Container`，无需理会。
+
+2、两个`rm`操作则是删除原来项目的源代码，但是保留`node_modules`文件夹，免去了我们只改代码，重复去获取依赖而导致发布程序时间过长的问题。
+
+3、`mkdir /var/node/docker_node`，第一次启动会自动创建目录，如果已经存在无需理会
+
+4、`tar`命令，表示把源码解压缩到指定目录
+
+5、两个`docker run ...`则先是执行`npm install`安装依赖，然后将整个应用启动起来。
+
+6、最后我们执行删除发送过来的代码包的操作。
+
+至此，我们的项目配置完毕，点击页面底部的保存按钮将会返回到工程的首页，这时候我们可以点击左侧的`立即构建`，就可以看到构建历史中小球在闪烁和构建进度条了，如果构建出错，构建历史中就会有红色小球，成功的话就是蓝色的小球，黄色的小球表示构建时虽然有错误，但最终还是成功的，不过即使这样我们也是值得注意的。
+
+![](http://7u2pwi.com1.z0.glb.clouddn.com/jenkins_ex9.png)
+
+点击这条构建历史，然后进入`Console Output`还能看到当前的构建进度，如果构建出错也可以从这里找到错误原因，修改构建配置。
+
+![](http://7u2pwi.com1.z0.glb.clouddn.com/jenkins_ex10.png)
+
+耐心等待一会，构建成功之后，我们再打开浏览器，访问之前的`Node.js`访问计数网站，我们的代码修改就被成功的发布了。以后每次有代码改动，就再也不需要使用`ssh`登录到远程服务器，执行重复劳动的操作了，只需要进入`jenkins`然后在项目主页点击`立即构建`，另外如果需要同时部署多台机器，只需要在构建的时候添加多台机器的配置脚本就可以了。
+
+如果在最后一步构建失败，那么请读者自行在`Jenkins`的控制台查看出错的原因，然后相应的修改配置脚本就可以了。
 
 ##小结
+本章节我们初步学习了`Docker`的使用方法，基本上算是入门了`Docker`，对于`Docker`构建应用还有一个比较好的办法就是使用`Dockerfile`，`Dockerfile`更加的清晰和简单，但是我们在使用`Dockerfile`之前还需要学习一下它的基本语法，这个就留给读者自行研究了。
 
+`Docker`的魅力就是没有局限，如果我们偷懒，完全可以把整个运行环境，包括`db`，`Nginx`，`Node.js`运行环境等打包成一个镜像，这样每次部署我们只需要启动一个`Container`就可以了，不过这不是`Docker`推荐的做法。总之我们可以充分发挥想象，尽情的体验`Docker`带给我们的乐趣。
+
+本章最后介绍了利用`Jenkins`来管理发布我们的`Node.js`应用，其实`Jenkins`不仅可以用来管理`Node.js`的应用，其他一些项目我们都可以使用它来做，包括测试环境发布，包括需要远程执行的一系列`shell`脚步等等，`Jenkins`可以解放我们双手，自动化话的操作可以避免人为的失误造成的损失。
 
 #参考文献
 - <https://www.docker.com/whatisdocker> what is docker
 - <http://www.cbinews.com/software/news/2015-01-20/228094.htm> 2015：Docker将走向深入应用
 - <http://blog.docker.com/2014/06/why-you-dont-need-to-run-sshd-in-docker/> why you dont need to run sshd in docker
 - <http://jpetazzo.github.io/2014/06/23/docker-ssh-considered-evil/> docker ssh considered evil
+- <http://www.ibm.com/developerworks/cn/java/j-lo-jenkins/> 基于 Jenkins 快速搭建持续集成环境
