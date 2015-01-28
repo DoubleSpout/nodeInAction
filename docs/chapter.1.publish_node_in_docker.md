@@ -1,8 +1,8 @@
 #通过Docker快速发布Node.js应用
 ##前言
-本章将主要介绍如何利用`Docker`容器快速发布一个`Nginx`+`Express`+`Mongodb`的项目，然后使用`Jenkins`进行简单的持续集成发布的工作。本章会介绍`Docker`的基础概念和用法和`Jenkins`的安装配置，`Node.js`配合`Docker`和`Jenkins`可以更加方便的管理我们的应用。
+本章将主要介绍如何利用`Docker`容器快速发布一个`Nginx`+`Express`+`Redis`的项目，然后使用`Jenkins`进行简单的持续集成发布的工作。本章会介绍`Docker`的基础概念和用法和`Jenkins`的安装配置，`Node.js`配合`Docker`和`Jenkins`可以更加方便的管理我们的应用。
 
-在学习本章之前，读者需要对`Linux`基本命令行操作、`Nginx`简单配置、`Express`框架、`Mongodb`和`Mongoose`模块有所了解。
+在学习本章之前，读者需要对`Linux`基本命令行操作、`Nginx`简单配置、`Express`框架、`redis`有所了解。
 
 ##什么是Docker
 Docker自2013年首次进入业界眼帘，受到广泛关注则是在2014年下半年。Docker 1.0自2014年6月份首次公布后，人气在短短几个月内便一路飙升。红帽在新的RHEL 7版本中增添了支持Docker的功能，IBM公开拥抱Docker和容器，亚马逊推出了EC2容器服务，就连公认的竞争对手VMware也宣布支持Docker。
