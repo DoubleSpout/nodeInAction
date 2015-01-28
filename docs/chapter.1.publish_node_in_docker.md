@@ -5,47 +5,48 @@
 在学习本章之前，读者需要对`Linux`基本命令行操作、`Nginx`简单配置、`Express`框架、`redis`有所了解。
 
 ##什么是Docker
-Docker自2013年首次进入业界眼帘，受到广泛关注则是在2014年下半年。Docker 1.0自2014年6月份首次公布后，人气在短短几个月内便一路飙升。红帽在新的RHEL 7版本中增添了支持Docker的功能，IBM公开拥抱Docker和容器，亚马逊推出了EC2容器服务，就连公认的竞争对手VMware也宣布支持Docker。
+`Docker`最早是2013年首次进入业界眼帘，受到广泛关注则是在2014年下半年。`Docker1.0`自2014年6月份首次公布后，人气在短短几个月内便一路飙升。红帽在新的`RHEL 7`版本中增添了支持`Docker`的功能，`IBM`公开拥抱`Docker`和容器，亚马逊推出了`EC2`容器服务，就连公认的竞争对手`VMware`也宣布支持`Docker`。
 
-去年8月份，于美国芝加哥举办的 CloudOpen 大会上，Linux.com 和 The New Stack 公布了一项由550名从业者参与的调查结果。在最受欢迎的开源云项目评选上，Docker居于第二位置，第一位是Openstack。
+2014年8月份，于美国芝加哥举办的`CloudOpen`大会上，`Linux.com`和`The New Stack`公布了一项由550名从业者参与的调查结果。在最受欢迎的开源云项目评选上，`Docker`居于第二位置，第一位是`Openstack`。
 
-对于2015年的到来，业界人士认为，Docker技术将不会停留于“热度”层面，而将会深入的走向部署和应用。而此也将会进一步激发不同开源技术与平台间的碰撞和整合，最终推动开源及容器技术的向前发展。在中国，则会有更多的云厂商宣布对Docker容器的支持。
+对于2015年的到来，业界人士认为，`Docker`技术将不会停留于“热度”层面，而将会深入的走向部署和应用。而此也将会进一步激发不同开源技术与平台间的碰撞和整合，最终推动开源及容器技术的向前发展。在中国，则会有更多的云厂商宣布对`Docker`容器的支持。
 
-那么Docker到底是什么？我们怎么定义这个开源界的新宠呢？
+那么`Docker`到底是什么？我们怎么定义这个开源界的新宠呢？
 
-在Docker官网的定义为：
+在`Docker`官网的定义为：
 
-Docker是一个为开发者和运维管理员搭建的一个开放平台，可以在这个平台上创建，管理和运行生产应用。Docker引擎是一个便携式的，轻量级运行时和打包工具，Docker Hub是一个云端的服务，可以用它共享应用或自动化工作流。Docker能够从组件快速的开发应用，并且可以轻松的创建开发环境、测试环境和生产环境。
+`Docker`是一个为开发者和运维管理员搭建的开放平台，可以在这个平台上创建，管理和运行生产应用。`Docker`引擎是一个便携式的，轻量级运行时和打包工具，`Docker Hub`是一个云端的服务，可以用它共享应用或自动化工作流。`Docker`能够从组件快速的开发应用，并且可以轻松的创建开发环境、测试环境和生产环境。
 
-通俗点说，Docker 是一个开源的应用容器引擎，可以让开发者打包自己的应用以及依赖包到一个可移植的容器中，然后发布到任何流行的 Linux 机器上，也可以实现虚拟化。Docker容器完全使用沙箱机制，独立于硬件、语言、框架、打包系统，相互之间不会有任何接口。几乎没有性能开销,可以很容易地在机器和数据中心中运行。最重要的是,他们不依赖于任何语言、框架或包括系统。
+通俗点说，`Docker`是一个开源的应用容器引擎，可以让开发者打包自己的应用以及依赖包到一个可移植的容器中，然后发布到任何流行的`Linux`机器上，也可以实现虚拟化。`Docker`容器完全使用沙箱机制，独立于硬件、语言、框架、打包系统，相互之间不会有任何接口。几乎没有性能开销,可以很容易地在机器和数据中心中运行。最重要的是,他们不依赖于任何语言、框架或包括系统。
 
-Docker的主要优势包括几个方面。比如作为一名开发者，在自己电脑上开发应用程序时一切都运行正常，但如果将其部署到其他环境中就不能正常工作。由于开发者使用了自己喜欢的栈、开发语言和版本，当把它们部署到新的环境如测试环境或生产环境时就会出现问题。这时，运维工程师和开发者之间需要花费大量时间、精力、财力通过进行大量沟通才能达成一致。但如果使用Docker进行开发，则可以将所有一切封装到一个或者几个可相互通讯的容器中，而这个容器自身就可以完成所有工作。之后开发者只需将该容器部署到其它环境中即可。
+`Docker`的主要优势包括几个方面。比如作为一名开发者，在自己电脑上开发应用程序时一切都运行正常，但如果将其部署到其他环境中就可能不能正常工作了。由于开发者使用了自己喜欢的栈、开发语言和版本，当把它们部署到新的环境如测试环境或生产环境时就会出现问题。这时，运维工程师和开发者之间需要花费大量时间、精力、财力通过进行大量沟通才能达成一致。但如果使用`Docker`进行开发，则可以将所有一切封装到一个或者几个可相互通讯的容器中，而这个容器自身就可以完成所有工作。之后开发者只需将该容器部署到其它环境中即可。
 
-其次，相对于虚拟机，由于Docker容器不必运行操作系统，所以其体积更小。底层的Linux容器已经被包含在内核当中。这意味着镜像体积非常小，非常快。如果虚拟机的体积以GB为单位，需要一到两分钟的启动时间，那么容器就只需以MB为单位，并且可以在几毫秒内启动。这可以帮助加速开发进度，允许开发者可以轻松地移动容器。
+其次，相对于虚拟机，由于`Docker`容器不必运行操作系统，所以其体积更小。底层的`Linux`容器已经被包含在内核当中。这意味着镜像体积非常小，非常快。如果虚拟机的体积以GB为单位，需要一到两分钟的启动时间，那么容器就只需以MB为单位，并且可以在几毫秒内启动。这可以帮助加速开发进度，允许开发者可以轻松地移动容器。
 
 此外，由于容器体积小，可以快速部署，所以有助于开发者进行超大规模部署。相对于虚拟机，开发者可以使用更少的存储空间、内存和CPU，因为其在性能方面基本上不需要系统开销。
 
-
 ##Nginx作为Node.js前端WebServer的作用
-在开始`Docker`之旅前，我们想先说明一下，把Nginx放置在Node.js前端的作用，因为后面的章节联系性都比较强，我实在想不到有更好的地方插入本节。Nginx想必大家都不会陌生，不过在这里我还是不厌其烦的再为大家介绍一下它。
+在开始`Docker`之旅前，我们想先说明一下，把`Nginx`放置在`Node.js`前端的作用，因为后面的章节联系性都比较强，我实在想不到有更好的地方插入本节。`Nginx`想必大家都不会陌生，不过在这里我还是不厌其烦的再为大家介绍一下它。
 
-Nginx（发音同engine x）是一款由俄罗斯程序员Igor Sysoev所开发轻量级的网页服务器、反向代理服务器以及电子邮件（IMAP/POP3）代理服务器。起初是供俄国大型的门户网站及搜索引擎Rambler（俄语：Рамблер）使用。其将源代码以类BSD许可证的形式发布，因它的稳定性、丰富的功能集、示例配置文件和低系统资源的消耗而闻名。此软件BSD-like协议下发行，可以在UNIX、GNU/Linux、BSD、Mac OS X、Solaris，以及Microsoft Windows等操作系统中运行。
+`Nginx`（发音同engine x）是一款由俄罗斯程序员`Igor Sysoev`所开发轻量级的网页服务器、反向代理服务器以及电子邮件（`IMAP/POP3`）代理服务器。起初是供俄国大型的门户网站及搜索引擎`Rambler`（俄语：Рамблер）使用。其将源代码以类`BSD`许可证的形式发布，因它的稳定性、丰富的功能集、示例配置文件和低系统资源的消耗而闻名。此软件`BSD-like`协议下发行，可以在`UNIX`、`GNU/Linux`、`BSD`、`Mac OS X`、`Solaris`，以及`Microsoft Windows`等操作系统中运行。
 
-我们在这里正是看重了Nginx出色的`Http`反向代理能力，所以才把它放置在Node.js前端，用来处理我们的各种需求。可能有读者不理解反向代理这个名词，我们在这里稍作解释。有反向代理就肯定有正向代理，正向代理我们接触的很多，比如我们想访问一些国外的网站，可是又由于某些原因无法正常打开或者打开缓慢，这时候我们通过香港的`Http`代理就可以正常的访问一些国外的网站了，在这里香港的这个`Http`代理就是正向代理。反向代理的情况正好相反，比如我们有一个对外的api服务`api.nodeAction.com`，初期我们启动一台服务器一个`Node.js`进程就可以完成负载，但是后期可能访问量的加大，发现一个进程，一台服务器已经不能满足我们的需要了，而且我们对外的地址以及路径又不能改变，毕竟已经很多用户在使用了，这时候`Nginx`就可以发挥自己反向代理的能力，可以在`Nginx`后端添加多个服务器或启动多个进程来分担访问压力了。在这里，`Nginx`的作用就是反向代理了。
+我们在这里正是看重了`Nginx`出色的`Http`反向代理能力，所以才把它放置在`Node.js`前端，用来处理我们的各种需求。可能有读者不理解反向代理这个名词，我们在这里稍作解释。
 
-理解了`Nginx`的反向代理，我们就要说明为什么把它放在`Node.js`的应用之前了，大致有如下几个好处：
+有反向代理就肯定有正向代理，正向代理我们接触的很多，比如我们想访问一些国外的网站，可是又由于某些原因无法正常打开或者打开缓慢，这时候我们通过香港的`Http`代理就可以正常的访问一些国外的网站了，在这里香港的这个`Http`代理就是正向代理。反向代理的情况正好相反，比如我们有一个对外的api服务`api.nodeAction.com`，初期我们启动一台服务器，一个`Node.js`进程就可以完成负载，但是后期随着访问量的加大，发现一个进程，一台服务器已经不能满足我们的需要了。这时候`Nginx`就可以发挥自己反向代理的能力，可以在`Nginx`后端添加多个服务器或启动多个进程来分担访问压力了。在这里，`Nginx`的作用就是反向代理了。
+
+理解了`Nginx`的反向代理，我们就要说明为什么把它放在`Node.js`的应用之前，大致有如下几个好处：
 
 1、静态文件性能
 
-`Node.js`的静态文件处理性能受制于它的单线程异步`I/O`的模型，注定了静态文件性能不会很好（所以某些情况下，单线程异步`I/O`并不是性能的代名词）。在一台普通的4CPU服务器上，使用Nginx处理静态文件的性能基本上是纯`Node.js`的2倍以上，所以我们避免在生产环境下，直接使用`Node.js`来处理静态文件。关于`Node.js`处理静态文件更多内容，在我另一本`《Node.js实战》`书中有详细对比和介绍，欢迎读者购买阅读。
+`Node.js`的静态文件处理性能受制于它的单线程异步`I/O`的模型，注定了静态文件性能不会很好（所以某些情况下，单线程异步`I/O`并不是性能的代名词）。在一台普通的4CPU服务器上，使用`Nginx`处理静态文件的性能基本上是纯`Node.js`的2倍以上，所以我们应该避免在生产环境下，直接使用`Node.js`来处理静态文件。关于`Node.js`处理静态文件的更多内容，在我撰写的另一本`《Node.js实战》`书中有详细对比和介绍，欢迎读者购买阅读。
 
 2、反向代理规则
 
-有时候会存在方向代理的服务器配置不同的情况，我们希望配置较好的机器能够分担更多的压力；有时因为session的关系，我们需要将同一来源IP的客户端总是转发到同一个进程上，等等这些规则，使用`Nginx`通过配置文件，就可以很简单的去实现这些。
+有时候会存在反向代理的服务器配置规则多样化的情况，有时我们希望配置较好的机器能够分担更多的压力；有时又因为`session`的关系，我们需要将同一来源IP的客户端总是转发到同一个进程上，等等这些规则，使用`Nginx`的配置文件，就可以很简单的去实现这些。
 
 3、扩展性
 
-`Nginx`可以加入许多扩展，帮助我们处理业务。最典型的就是加入`Lua`语言的扩展，通过胶水语言`Lua`，对`Nginx`赋予了复杂逻辑判断的能力，同时还保持着一贯的高效。比如我们的api服务，对访问会进行`md5`签名或对同一客户端来源有访问频率限制，这部分代码是后端业务处理前必须通过的验证，具有卡口作用。利用`Lua`扩展，我们就可以高效的，简单的完成这个卡口。
+`Nginx`可以加入许多扩展，帮助我们处理业务。最典型的就是加入`Lua`语言的扩展，通过胶水语言`Lua`，对`Nginx`赋予了复杂逻辑判断的能力，同时还保持着一贯的高效。例如我们的api服务，对访问会进行`md5`签名或对同一客户端来源有访问频率限制，这部分代码是后端业务处理前必须通过的验证，具有卡口作用。利用`Lua`扩展，我们就可以高效的，简单的完成这个卡口。
 
 4、稳定性和转发性能
 
@@ -53,7 +54,7 @@ Nginx（发音同engine x）是一款由俄罗斯程序员Igor Sysoev所开发�
 
 5、安全性
 
-`Nginx`已经被各大互联网公司广泛应用，经过一些配置就可以有效抵挡类似`slowloris`等的`DoS`，而`Node.js`在这方面做的还不够，关于`Node.js`开发安全方面的更多内容，可以参考我的另一本`《Node.js实战》`一书，专门有一个章节来讨论如何更安全的开发`Node.js`的`web`应用。
+`Nginx`已经被各大互联网公司广泛应用，经过一些配置就可以有效抵挡类似`slowloris`等的`DoS`攻击，而`Node.js`在这方面做的还不够，关于`Node.js`开发安全方面的更多内容，可以参考我的另一本`《Node.js实战》`一书，专门有一个章节来讨论如何更安全的开发`Node.js`的`web`应用。
 
 6、运维管理
 
@@ -62,13 +63,13 @@ Nginx（发音同engine x）是一款由俄罗斯程序员Igor Sysoev所开发�
 所以，一个好习惯就是，在生产环境中，永远把`Nginx`放置在`Node.js`的前端，对性能，安全性和将来的扩展性都有益处。
 
 ##安装Docker和下载Images镜像
-`Nginx`插曲之后，继续我们的`Docker`之旅，在Docker官网有详细的各个系统安装流程，我们这里就介绍下`CentOS`下的安装，其他系统安装地址详见：[https://docs.docker.com/](https://docs.docker.com/)
+在`Nginx`插曲之后，继续我们的`Docker`之旅，在Docker官网有详细的各个系统安装流程，我们这里就介绍下`CentOS`下的安装，其他系统安装地址详见：[https://docs.docker.com/](https://docs.docker.com/)
 
-对于在`CentOS 7`下的用户，我们就非常简单，直接运行如下命令，就可以安装最新版本的`Docker`
+对于在`CentOS 7`下的用户，就非常简单，直接运行如下命令，就可以安装最新版本的`Docker`
 
 	$ sudo yum install docker
 
-对于在`CentOS 6.5`下的用户就稍微麻烦点，先获取`epel`源，并导入。
+对于在`CentOS 6.5`下的用户稍微麻烦点，先获取`epel`源，并导入。
 
 	$ wget -c http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm
 	$ rpm -ivh epel-release-6-8.noarch.rpm
@@ -85,7 +86,7 @@ Nginx（发音同engine x）是一款由俄罗斯程序员Igor Sysoev所开发�
 
 `Docker`服务已经安装并启动了，我们需要下载`Image`镜像，镜像就是我们应用运行的环境，比如我们可以自己装好`Node.js`和`npm`然后发布到`Docker Hub`上，供自己或者别人下载，我们也可以下载安装一些官方的镜像，把它作为自己镜像的基础，下面我们先下载`CentOS`镜像。
 
-	$ sudo docker pull centos
+	$ sudo docker pull centos:7
 
 等待片刻后，就可以下载完毕了，执行命令查看镜像是否安装成功。
 
@@ -120,7 +121,7 @@ Nginx（发音同engine x）是一款由俄罗斯程序员Igor Sysoev所开发�
 
 一个简单的启动`Container`盒子的示例：
 	
-	$ sudo docker run -t -i centos:latest /bin/bash
+	$ sudo docker run -t -i centos /bin/bash
 
 启动`Container`盒子非常重要的命令，我们会在下一节详细介绍`Container`盒子及启动命令
 
@@ -189,12 +190,12 @@ Nginx（发音同engine x）是一款由俄罗斯程序员Igor Sysoev所开发�
 
 接下来我们简单说明一下`Image`和`Container`的关系，`Image`顾名思义就是镜像的意思，我们可以把它理解为一个执行环境（env），当我们执行了`docker run`命令之后，`Dock`就会根据当前的`Image`创建一个新的`Container`，`Container`更像是一个程序运行的沙箱，它们互相独立，但是都是运行在`Image`创建的执行环境之上。
 
-接下来我们就启动一段小程序，基于我们刚才下载的`CentOS`镜像，我们启动一个`Container`，让控制输出一个`hello world`。
+接下来我们就启动一段小程序，基于我们刚才下载的`CentOS`镜像，我们启动一个`Container`，让控制台输出一个`hello world`。
 	
 	$ sudo docker run b15 /bin/echo 'Hello world'
 	Hello world
 
-其中`b15`是我们之前下载的镜像的`id`，在`Docker`中`id`不必输全，只要保证输入的`id`号前几位能让`Docker`找到唯一的`Image`或`Container`就可以了，这同样适用于删除操作。
+其中`b15`是我们之前下载的镜像的`id`，在`Docker`中`id`不必输全，只要保证输入的`id`前几位能让`Docker`找到唯一的`Image`或`Container`就可以了，这同样适用于删除操作。
 
 现在我们尝试启动一个稍微复杂一点的`Container`，每秒钟打印一个`Hello World`。
 
@@ -224,11 +225,14 @@ Nginx（发音同engine x）是一款由俄罗斯程序员Igor Sysoev所开发�
 对于`Container`的其他停止，重启和启动的操作命令，读者请参考上一节的内容。
 	
 ##文件卷标加载
-上一节我们学习了`Container`的基本概念，并启动了几个输出`Hello World`的例子，初步理解了`Container`的朋友，可能会把`Docker`的`Container`理解为已给虚拟机，虽然这并不完全正确，但是在本节我不会去纠正他，这样理解对我们深入学习`Docker`是有所帮助的，在接下来的一节，会专门针对这个问题进行讨论。
+上一节我们学习了`Container`的基本概念，并启动了几个输出`Hello World`的例子，初步理解了`Container`的朋友，可能会把`Docker`的`Container`理解为一个虚拟机，虽然这并不完全正确，但是在本节我不会去纠正他，这样理解对我们深入学习`Docker`是有所帮助的，在接下来的一节，会专门针对这个问题进行讨论。
 
 我们可能有这样的需求，应用程序跑在`Container`里，但是日志我们不想记录在里面，因为万一`Image`升级，我们就必须重新执行`docker run`命令，这样日志文件处理就比较麻烦了，而且记录在`Container`文件系统里的日志也不方便我们查看。这时候就需要将主机的文件卷标挂载到`Container`中去了，在`Container`中写入和读取的某个文件目录，其实就是主机的文件，我们通过参数`-v`把主机文件映射到`Container`中。
+
+下面的命令就是把本机的`/etc`目录挂载到`Container`里的`/opt/etc`下面，并且打印`Container`的`/opt/etc`目录。
 	
 	$ docker run --rm=true -i -t --name=ls-volume -v /etc/:/opt/etc/ centos ls /opt/etc
+
 	boot2docker  hostname     ld.so.conf     passwd-      securetty  sysconfig
 	default      hosts        mke2fs.conf    pcmcia       services   sysctl.conf
 	fstab        hosts.allow  modprobe.conf  profile      shadow     udev
@@ -257,28 +261,28 @@ Nginx（发音同engine x）是一款由俄罗斯程序员Igor Sysoev所开发�
 	my_share       pki             rc0.d           rpc        shells              tmpfiles.d
 	...
 
-我们可以看到，这个`ls_etc`这个`Container`打印出来的`/etc`目录是包含我们之前在`etc_share`这个`Container`中创建的目录`my_share`的。	
+我们可以看到，这个`ls_etc`这个`Container`打印出来的`/etc`目录是包含我们之前在`etc_share`这个`Container`中创建的`my_share`目录的。	
 
 ##将多个Container盒子连接起来
-上一节我们学习了如何将主机或者`Container`的文件系统挂载起来，本节我们将学习把各个`Container`连接在一起，发挥`Docker`的魅力。
+上一节我们学习了如何将主机或者`Container`的文件系统挂载起来，本节我们将学习把各个`Container`连接在一起。
 
-我现在先下载一个`redis`数据库`Image`，这是使用`Docker`的常规做法，数据库单独用一个`Image`，程序一个`Image`，利用`Docker`的`link`属性将他们连接起来，配合使用。
+我现在先下载一个`redis`数据库的镜像，这是使用`Docker`的常规做法，数据库单独用一个`Image`，程序一个`Image`，利用`Docker`的`link`属性将他们连接起来，配合使用。
 
 	$ sudo docker pull redis:latest #下载官方的redis最新镜像，耐心等待一段时间
 
-一般我们使用`docker pull`命令后面都会跟着版本号（`2.8.19`截稿时`redis`的最新版）或者`latest`，这样不用重复的去下载这个镜像以前的老版本，可以加快速度。接着我们执行命令，启动`redis`镜像的`Container`，开启`redis-server`持久化服务。
+一般我们使用`docker pull`命令后面都会跟着版本号（`2.8.19`截稿时`redis`的最新版）或者`latest`，这样不用重复的去下载这个镜像的老版本，可以加快速度。接着我们执行命令，启动`redis`镜像的`Container`，开启`redis-server`持久化服务。
 
-	docker run --name redis-server -d redis redis-server --appendonly yes
+	$ sudo docker run --name redis-server -d redis redis-server --appendonly yes
 
 然后我们再启动一个`redis`镜像的`Container`作为客户端连接我们刚才启动的`redis-server`
 
-	docker run --rm=true -it --link redis-server:redis redis /bin/bash
+	$ sudo docker run --rm=true -it --link redis-server:redis redis /bin/bash
 
 执行上面的命令后，我们就进入了`Container`内部的`bash`，可以直接在里面执行一些`linux`的命令。
 
 	redis@7441b8880e4e:/data$ env
 
-当前命令行在主机中还是在`Container`中，主要根据`$`符号左侧的用户名来区分，上面的命令将打印系统的环境变量，输出如下。
+当前控制台在主机中还是在`Container`中，主要根据`$`符号左侧的用户名来区分，上面的命令将打印`Container`里系统的环境变量，输出如下。
 
 	REDIS_PORT_6379_TCP_PROTO=tcp
 	REDIS_ENV_REDIS_DOWNLOAD_URL=http://download.redis.io/releases/redis-2.8.19.tar.gz
@@ -306,10 +310,10 @@ Nginx（发音同engine x）是一款由俄罗斯程序员Igor Sysoev所开发�
 	$ 172.17.0.34:6379> get a
 	"1"
 
-我们成功的利用环境变量连接上了一台给我们提供服务的`redis`数据库`Container`，用同样的方法，我们可以在程序里连接其他数据库，比如`mysql`或者`mongodb`等。
+我们成功的利用环境变量连接上了一台给我们提供数据库服务的`redis`的`Container`，用同样的方法，我们可以在程序里连接其他数据库，比如`mysql`或者`mongodb`等。
 
 ##不要用ssh连接到你的Container盒子
-学习了前面几个章节，相信读者已经不算是一个`Docker`新手了，越来越多的情况，会让你想到：“怎么进入到我的`Container`中去呢？”，其他人会告诉他：“ 在你的`Container`里面装一个`ssh server`，这样你就可以连入你的`Container`了。” 但是这是一种糟糕的做法，下面我将告诉大家为什么这么做是错误的，万不得已，我们能用什么方式来替代它。
+学习了前面几个章节，相信读者已经不算是一个`Docker`新手了，越来越多的情况，会让你想到：“怎么进入到我的`Container`中去呢？”，其他人会告诉他：“ 在你的`Container`里面装一个`ssh server`，这样你就可以连入你的`Container`了。” 但是这是一种糟糕的做法，下面我将告诉大家为什么这么做是错误的，如果实在万不得已，我们又能用什么方式来替代它。
 
 在`Container`里安装一个`ssh server`是非常诱人的，因为这样我们就可以直接连接`Container`，并且进入它的内部，我们可以使用前面几节学到的端口映射方式，让本地的`ssh`客户端连入`Container`。
 
@@ -325,7 +329,7 @@ Nginx（发音同engine x）是一款由俄罗斯程序员Igor Sysoev所开发�
 
 如果你把它们装载进`Image`中，那你每次更新都需要重新创建`Image`，重新发布`Image`，然后重启`Container`。这样做不是很优雅。
 
-一个更好的办法是将这些东西放在一个文件卷标中，它能工作，但是也有显著的缺点，你必须保证你的`Container`没有对这个文件卷标有写的权限，否则可能会污染你的密钥和密码，从而造成你无法登录这个`Containe`r。而且事情可能因为你为多个`Container`共享这些东西而变的更加难以管理。
+一个更好的办法是将这些东西放在一个文件卷标中，它能工作，但是也有显著的缺点，你必须保证你的`Container`没有对这个文件卷标有写的权限，否则可能会污染你的密钥和密码，从而造成你无法登录这个`Container`。而且事情可能因为你为多个`Container`共享这些东西而变的更加难以管理。
 
 3、你如何管理你的密码升级
 `SSH server`是非常安全的，但是一旦你的密钥或密码泄漏，你不得不升级所有使用`SSH`的`Container`，并且重启他们。这也可能让`memcache`这样的内存缓存服务器的缓存将全部丢失，你不得不重建缓存。
@@ -351,7 +355,7 @@ Nginx（发音同engine x）是一款由俄罗斯程序员Igor Sysoev所开发�
 5、调试我的应用
 这可能是唯一需要进入`Container`的场景了，这样你就需要`nsenter`软件
 
-下面我就利用类似机器猫的任意门软件`nsenter`,进入到`Container`中去。`nsenter`是一个小的工具，用来进入现有的命名空间，命名空间是什么？他们是container的重要组成部分。简单点说，通过使用`nsenter`你可以进入一个已经存在的`Container`中，尽管这个`Container`没有安装`ssh server`或者其他类似软件。
+下面我就利用类似机器猫的任意门软件`nsenter`，带你进入到`Container`中去。`nsenter`是一个小的工具，用来进入现有的命名空间，命名空间是什么？他们是`Container`的重要组成部分。简单点说，通过使用`nsenter`你可以进入一个已经存在的`Container`中，尽管这个`Container`没有安装`ssh server`或者其他类似软件。
 
 `nsenter`项目地址：[https://github.com/jpetazzo/nsenter](https://github.com/jpetazzo/nsenter)
 
@@ -368,7 +372,7 @@ Nginx（发音同engine x）是一款由俄罗斯程序员Igor Sysoev所开发�
 	$ sudo docker inspect --format {{.State.Pid}} 9479
 	7026
 
-这里我们得到了`id`为`9479`的`Container`它的`pid`号为7026，这句话有点拗口，其实我们只需关心7026这个`pid`号就可以了。接着我们根据刚才获得的`pid`就能顺利进入到`Container`的内部了。
+这里我们得到了`id`为`9479`的`Container`它的`pid`号为7026，这句话有点拗口，其实我们只需关心7026这个`pid`号就可以了。我们根据刚才获得的`pid`就能顺利进入到`Container`的内部了。
 
 	$ sudo nsenter --target $PID --mount --uts --ipc --net --pid
 
@@ -396,16 +400,16 @@ Nginx（发音同engine x）是一款由俄罗斯程序员Igor Sysoev所开发�
 
 那就需要手动将`Container`里的`nsenter`命令拷贝到`/usr/local/bin`目录下了，先把`jpetazzo/nsenter`运行起来，然后手动进入文件系统，将命令拷贝出来，其中`containid`就是我们使用`docker ps`查到的`id`，目录`devicemapper`是`centos`下的路径名，在`windows`下是`aufs`。
 
-	cp /var/lib/docker/devicemapper/mnt/<containid>/rootfs/nsenter /usr/local/bin/
-	cp /var/lib/docker/devicemapper/mnt/<containid>/rootfs/docker-enter /usr/local/bin/
+	$ cp /var/lib/docker/devicemapper/mnt/<containid>/rootfs/nsenter /usr/local/bin/
+	$ cp /var/lib/docker/devicemapper/mnt/<containid>/rootfs/docker-enter /usr/local/bin/
 
 ##配置我的DockerImages镜像和发布应用
-我们已经学习到了很多关于`Docker`的知识了，`Docker`之旅也渐渐接近尾声了，本节我们就要简单制作一个`Node.js`的`Express.js`环境的镜像，通过`pm2`来启动我们的`web`应用，然后发布到`Docker`云上；我们还会使用`redis`数据库来暂存用户的访问次数；在`Node.js`应用前端，我们需要放置一个`Nginx`作为反向代理，现在让我们开始吧。
+我们已经学习到了很多关于`Docker`的知识，`Docker`之旅也渐渐接近尾声了，本节我们就要简单制作一个`Node.js`的`Express.js`环境的镜像，通过`pm2`来启动我们的`web`应用，然后发布到`Docker`云上；我们还会使用`redis`数据库来暂存用户的访问次数；在`Node.js`应用前端，我们需要放置一个`Nginx`作为反向代理，现在让我们开始吧。
 
 第一步，我们把需要用到的`Image`镜像统统的都下载到本地，执行如下命令，等待片刻就能下载成功了，为了加快下载速度和本书代码的兼容性，我们指定了下载各个镜像的版本，读者可以根据当时的最新版本进行下载。
 
-	docker pull redis:2.8.19
-	docker pull node:0.10.36
+	$ sudo docker pull redis:2.8.19
+	$ sudo docker pull node:0.10.36
 
 执行`docker images`检查一下这些镜像是否都安装完毕，正常会打印出各个镜像列表。
 
