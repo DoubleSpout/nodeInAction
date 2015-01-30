@@ -181,16 +181,16 @@
 	
 	$ sudo docker start 026e
 	
-基本上常用的命令就是这些，读者第一次阅读可以对它们有初略的了解，下面几节会对以上命令做一些详细的介绍。
+基本上常用的命令就是这些，读者第一次阅读只需对它们有初略的了解，下面几节会对以上命令做一些详细的介绍。
 
-一般我们会去`Docker`官网上搜索我们需要的镜像，然后通过`docker pull`命令下载到本地，执行`docker run`启动一个容器。下一节我们将详细介绍关于`Docker`的精髓，`Container`。
+一般我们会去`Docker`官网上搜索我们需要的镜像，然后通过`docker pull`命令下载到本地，执行`docker run`启动一个容器。下一节我们将详细介绍关于`Docker`的精髓，那就是`Container`。
 
 ##启动Container盒子
 看了上一节那些眼花缭乱的命令，再加上又是`Image`又是`Container`的，读者们是不是觉得很头晕，既然下载了`Image`为什么又会多一个`Container`了呢？在`Docker`世界里，它们之间的关系又是什么样子的呢？
 
 接下来我们简单说明一下`Image`和`Container`的关系，`Image`顾名思义就是镜像的意思，我们可以把它理解为一个执行环境（env），当我们执行了`docker run`命令之后，`Dock`就会根据当前的`Image`创建一个新的`Container`，`Container`更像是一个程序运行的沙箱，它们互相独立，但是都是运行在`Image`创建的执行环境之上。
 
-接下来我们就启动一段小程序，基于我们刚才下载的`CentOS`镜像，我们启动一个`Container`，让控制台输出一个`hello world`。
+接下来我们就启动一段小程序，基于我们刚才下载的`CentOS`镜像，我们启动一个`Container`，让控制台输出一行`hello world`。
 	
 	$ sudo docker run b15 /bin/echo 'Hello world'
 	Hello world
@@ -199,7 +199,7 @@
 
 现在我们尝试启动一个稍微复杂一点的`Container`，每秒钟打印一个`Hello World`。
 
-	$ sudo docker run  -i -t b15 /bin/sh -c "while true; do echo hello world; sleep 1; done" 
+	$ sudo docker run -i -t b15 /bin/sh -c "while true; do echo hello world; sleep 1; done" 
 	Hello world
 	Hello world
 	Hello world
@@ -207,7 +207,7 @@
 	Hello world
 	...
 
-命令中的参数，其中`-i`表示同步`Container`的`stdin`，`-t`表示同步`Container`的输出。
+命令中的参数`-i`表示同步`Container`的`stdin`，`-t`表示同步`Container`的输出。
 
 上面我们执行了2个`docker run`的任务，其实也就创建了2个独立的`Container`，我们通过命令`docker ps -a`就可以列出所有我们创建过的`Container`了，因为版面显示的原因，我做了部分修改，把`COMMAND`改短了。
 
@@ -222,10 +222,10 @@
 	$ sudo docker rm -f 026
 	026
 
-对于`Container`的其他停止，重启和启动的操作命令，读者请参考上一节的内容。
+对于`Container`的停止，重启和启动的操作命令，读者请参考上一节的内容。
 	
 ##文件卷标加载
-上一节我们学习了`Container`的基本概念，并启动了几个输出`Hello World`的例子，初步理解了`Container`的朋友，可能会把`Docker`的`Container`理解为一个虚拟机，虽然这并不完全正确，但是在本节我不会去纠正他，这样理解对我们深入学习`Docker`是有所帮助的，在接下来的一节，会专门针对这个问题进行讨论。
+上一节我们学习了`Container`的基本概念，并启动了几个输出`Hello World`的例子，初步理解了`Container`的读者可能会把`Docker`的`Container`理解为一个虚拟机，虽然这并不完全正确，但是在本节我不会去纠正他，这样理解对我们深入学习`Docker`是有所帮助的，在接下来的一节，会专门针对这个问题进行讨论。
 
 我们可能有这样的需求，应用程序跑在`Container`里，但是日志我们不想记录在里面，因为万一`Image`升级，我们就必须重新执行`docker run`命令，这样日志文件处理就比较麻烦了，而且记录在`Container`文件系统里的日志也不方便我们查看。这时候就需要将主机的文件卷标挂载到`Container`中去了，在`Container`中写入和读取的某个文件目录，其实就是主机的文件，我们通过参数`-v`把主机文件映射到`Container`中。
 
@@ -266,7 +266,7 @@
 ##将多个Container盒子连接起来
 上一节我们学习了如何将主机或者`Container`的文件系统挂载起来，本节我们将学习把各个`Container`连接在一起。
 
-我现在先下载一个`redis`数据库的镜像，这是使用`Docker`的常规做法，数据库单独用一个`Image`，程序一个`Image`，利用`Docker`的`link`属性将他们连接起来，配合使用。
+我们现在先下载一个`redis`数据库的镜像，这是使用`Docker`的常规做法，数据库单独用一个`Image`，程序一个`Image`，利用`Docker`的`link`属性将他们连接起来，配合使用。
 
 	$ sudo docker pull redis:latest #下载官方的redis最新镜像，耐心等待一段时间
 
@@ -537,7 +537,7 @@
 	#挂载pm2的日志输出
 	$ mkdir /var/log/pm2
 	#使用pm2启动app应用，但是会有问题哦
-	$ sudo docker run -d -h dockernode --name "nodeCountAccess" -p 8000:8000 -v /var/node/docker_node:/var/node/docker_node -v /var/log/pm2:/root/.pm2/logs/ --link redis-server:redis -w /var/node/docker_node/  doublespout/node_pm2 pm2 start app.js
+	$ sudo docker run -d --name "nodeCountAccess" -p 8000:8000 -v /var/node/docker_node:/var/node/docker_node -v /var/log/pm2:/root/.pm2/logs/ --link redis-server:redis -w /var/node/docker_node/  doublespout/node_pm2 pm2 start app.js
 
 但是当我们执行`docker ps`后发现这个`Container`并没有启动，这是什么原因呢？因为我们利用`pm2`的守护进程方式启动了应用，所以`Container`会认为进程已经运行结束了，所以自己退出了，这时候我们需要让`pm2`以非守护进程的方式运行在`Container`里就可以了，我们的命令要做一些更改。
 
@@ -563,7 +563,7 @@
 	make && make install
 	ln -s /opt/openresty/nginx/sbin/nginx /usr/sbin/
 
-修改`openresty`的默认配置文件，配置文件在`/opt/openresty/nginx/conf/nginx.conf`，我们修改为如下内容，出于篇幅的考虑，此配置文件是精简的配置，不要用于生产环境。
+修改`openresty`的默认配置文件，配置文件在`/opt/openresty/nginx/conf/nginx.conf`，我们修改为如下内容，出于篇幅的考虑，此配置文件是精简的配置，不要用于生产环境，大家主要就看`server`那段的配置文件内容。
 
 	worker_processes 1;
 	events {
@@ -623,7 +623,7 @@
 本章的接下来几个小节，就会介绍如何从零开始，搭建一个`Jenkins`的持续集成软件，自动化部署我们之前开发的那个记录访问次数的`Node.js`应用。
 
 ##通过Docker安装和启动Jenkins
-有了`Docker`这个利器，我们省去了好多安装`java`环境数据库等的麻烦，所以安装`Jenkins`异常简单，只需要执行如下一行命令即可。
+有了`Docker`这个利器，我们省去了安装`java`环境的麻烦，所以安装`Jenkins`异常简单，只需要执行如下一行命令即可。
 	
 	#截稿时，docker中最新版本的jenkins是1.554.1
 	docker pull jenkins:1.554.1
@@ -639,10 +639,18 @@
 ![](http://7u2pwi.com1.z0.glb.clouddn.com/jenkins_ex2.png)
 
 ##配置Jenkins，自动化部署Node.js项目
-我们需要对`Jenkins`进行一些简单的配置，才能让它自动化的部署应用，由于我们的代码是部署在`github`仓库的，所以我们先要对`Jeknins`安装几个插件，让它可以从`github`获取代码，并远程部署到我们生产的服务器上。进入`系统管理`->`管理插件`->`可选插件`，在右上侧的筛选框中输入`git`，并安装`Git Plugin (This plugin integrates GIT with Jenkins.)`这个插件；然后再安装插件`Publish Over SSH (Send build artifacts over SSH)`插件，插件安装完成后，我们需要重新启动`Jenkins`，插件安装完毕后，会自动重启，如果重启失败，可以自进入`Jeknins`的目录`/restart`手动重启。
-	
+我们需要对`Jenkins`进行一些简单的配置，才能让它自动化的部署应用，由于我们的代码是部署在`github`仓库的，所以我们先要对`Jeknins`安装几个插件，让它可以从`github`获取代码，并远程部署到我们生产的服务器上。
+
+进入`系统管理`->`管理插件`->`可选插件`，在右上侧的筛选框中输入`git`，并安装`Git Plugin (This plugin integrates GIT with Jenkins.)`这个插件；然后再安装插件`Publish Over SSH (Send build artifacts over SSH)`插件，检查网络这一步骤可能时间较长，请耐心等待。
+
+插件安装完成后，我们需要重新启动`Jenkins`，插件安装完毕后，会自动重启，如果自动重启失败，可以自进入`Jeknins`的目录`/restart`手动重启。
+
 	#进入目录手动重启
 	http://192.168.1.116:49001/restart
+
+如果`可选插件`列表为空，那么进入`高级`，然后点击`立即获取`，就可以去获取`可选插件`了。
+
+![](http://7u2pwi.com1.z0.glb.clouddn.com/jenkins_ex11.png)
 
 重启完成之后，我们进入`系统管理`->`系统设置`来对插件进行一下简单的设置，增加远程的服务器配置。如下图，填入我们待发布的生产服务器的Ip地址，`ssh`端口以及用户名密码等信息就可以了。如果远程服务器是通过`key`来登录的，我们还需要把`key`的存放路径写上。
 
@@ -688,13 +696,13 @@
 
 在`SSH SERVER`的下拉菜单中，选择我们刚刚添加的服务器。
 
-在`Source files`一行中，填写我们要发送到远程服务器的文件，我们把刚才打包的文件名填入，这里的工作路径是本项目下的`workspace`，在这里也就是`/var/jenkins_home/jobs/node_access_count/workspace/`，所以我们填入`node_access_count.tar.gz`。
+在`Source files`一行中，填写我们要发送到远程服务器的文件，我们把刚才打包的文件名`node_access_count.tar.gz`填入，这里的工作路径是本项目下的`workspace`，在这里也就是`/var/jenkins_home/jobs/node_access_count/workspace/`。
 
 在`Remote directory`一行中，填写发送代码包的远程保存地址，我们这里写入`var/`，还记得我们创建这台服务器时，填入的远程默认地址是`/`这个吗，所以我们发送到这台服务器上的代码包`node_access_count.tar.gz`会被保存在`/var/node_access_count.tar.gz`这个路径下。
 
 接下来就是先把老的代码删除，然后解压缩新的代码，并安装依赖和重启服务，还记得我们之前启动的`Container`叫什么名字吗？我们在`Exec command`一栏中填入如下命令。
 	
-	docker stop nodeCountAccess
+	docker rm -f nodeCountAccess
 
 	rm -rf /var/node/docker_node/app.js
 	rm -rf /var/node/docker_node/package.json
@@ -705,15 +713,15 @@
 
 	tar -xvf /var/node_access_count.tar.gz -C /var/node/docker_node
 
-	sudo docker run --rm -i -t -v /var/node/docker_node:/var/node/docker_node -w /var/node/docker_node/ doublespout/node_pm2 npm install
+	docker run --rm -i -t -v /var/node/docker_node:/var/node/docker_node -w /var/node/docker_node/ doublespout/node_pm2 npm install
 	
-	sudo docker run --rm -d --name "nodeCountAccess" -p 8000:8000 -v /var/node/docker_node:/var/node/docker_node -v /var/log/pm2:/root/.pm2/logs/ --link redis-server:redis -w /var/node/docker_node/  doublespout/node_pm2 pm2 start --no-daemon app.js
+	docker run -d --name "nodeCountAccess" -p 8000:8000 -v /var/node/docker_node:/var/node/docker_node -v /var/log/pm2:/root/.pm2/logs/ --link redis-server:redis -w /var/node/docker_node/  doublespout/node_pm2 pm2 start --no-daemon app.js
 
 	rm -rf /var/node_access_count.tar.gz
 	
 下面我们简单说明一下这些命令的含义。
 
-1、`docker stop nodeCountAccess`命令，我们会停止之前的一个运行的`Container`，如果是第一次发布会触发一个错误，没有这个`Container`，无需理会。
+1、`docker rm -f nodeCountAccess`命令，我们会强制删除之前的一个运行的`Container`，如果是第一次发布会触发一个错误，没有这个`Container`，无需理会。
 
 2、两个`rm`操作则是删除原来项目的源代码，但是保留`node_modules`文件夹，免去了我们只改代码，重复去获取依赖而导致发布程序时间过长的问题。
 
@@ -724,6 +732,11 @@
 5、两个`docker run ...`则先是执行`npm install`安装依赖，然后将整个应用启动起来。
 
 6、最后我们执行删除发送过来的代码包的操作。
+
+如果服务器在国内，那我们需要将`Exec timeout (ms)`设置的长一些，这样在`git`操作和`npm`操作的时候不会因为超时而报错。
+
+![](http://7u2pwi.com1.z0.glb.clouddn.com/jenkins_ex12.png)
+
 
 至此，我们的项目配置完毕，点击页面底部的保存按钮将会返回到工程的首页，这时候我们可以点击左侧的`立即构建`，就可以看到构建历史中小球在闪烁和构建进度条了，如果构建出错，构建历史中就会有红色小球，成功的话就是蓝色的小球，黄色的小球表示构建时虽然有错误，但最终还是成功的，不过即使这样我们也是值得注意的。
 
