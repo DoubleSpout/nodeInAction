@@ -432,6 +432,8 @@
 	$ npm install pm2 -g
 	$ pm2 -v
 	0.12.3
+	#考虑中国的网络，再装下cnpm更靠谱些
+	$ npm install cnpm -g --registry=https://registry.npm.taobao.org
 	#从Container的bash退出
 	$ exit
 
@@ -526,7 +528,7 @@
 
 我们先启动一个`Container`把依赖装一下，命令如下：
 
-	$ sudo docker run --rm -i -t -v /var/node/docker_node:/var/node/docker_node -w /var/node/docker_node/ doublespout/node_pm2 npm install
+	$ sudo docker run --rm -i -t -v /var/node/docker_node:/var/node/docker_node -w /var/node/docker_node/ doublespout/node_pm2 cnpm install
 
 屏幕会打印依赖安装的过程，等所有`Node.js`的包安装完成后，这个`Container`会自动退出，然后我们进入`/var/node/docker_node/`目录，就可以看到`node_modules`文件夹，说明我们的依赖包安装完毕了。如果出现`EACCESS`的权限错误，可以执行如下命令，许可`SELinux`的工作状态，不过这只是临时修改，重启系统后会恢复。
 

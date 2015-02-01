@@ -71,16 +71,122 @@
 关于各操作系统下载和启动的方式，官网有比较详细的文档，我这里就不再累述了，访问地址：[http://www.rabbitmq.com/download.html](http://www.rabbitmq.com/download.html "http://www.rabbitmq.com/download.html")，这里我主要介绍下使用上一章的`Docker`来安装和启动它，手握利器也要加以善用。
 	
 	#到截稿时，最新版本是3.4.3
-	docker pull rabbitmq:3.4.3
+	$ sudo docker pull rabbitmq
+	#启动rabbitmq服务
+	$ docker run -d -e RABBITMQ_NODENAME=my-rabbit --name some-rabbit -p 5672:5672 rabbitmq:3
 
-
-
-
-
-
+是不是用了`Docker`我们就可以更加专心和专注的开发业务代码了，而不用为了装环境而浪费一天。下面几个小节，我们将学习`RabbitMQ`的各种队列，对我们的日常开发很有帮助。
 
 ##RabbitMQ的Hello World
+要连接`RabbitMQ`我们需要安装连接包，我们依次执行命令，创建环境，这里我没使用官方推荐的`npm`包`amqp.node`。
+	
+	$ mkdir /var/node
+	$ mkdir /var/node/rabbit_hello
+	$ cd /var/node
+	$ npm install amqplib
 
+然我们写一个`hello world`的示例的服务器不分，并把它保存在`/var/node/rabbit_hello/server.js`。
+
+	var amqp = require('amqplib');
+	amqp.connect('amqp://127.0.0.1').then(function(conn) {
+	  process.once('SIGINT', function() { conn.close(); });
+	  return conn.createChannel().then(function(ch) {
+    
+	    var ok = ch.assertQueue('hello', {durable: false});    
+
+	    ok = ok.then(function(_qok) {
+	      return ch.consume('hello', function(msg) {
+	        console.log(" [x] Received '%s'", msg.content.toString());
+	      }, {noAck: true});
+	    });
+	    
+	    return ok.then(function(_consumeOk) {
+	      console.log(' [*] Waiting for messages. To exit press CTRL+C');
+	    });
+	  });
+	}).then(null, console.warn);
+
+下面我们来解释下这些代码的流程。在解释上述代码之前，我们需要简单解释一下`then`方法，它是`Node.js`用来处理异步回调的方法之一，一般我们处理`Node.js`异步回调嵌套的方法有两种，`Promise`和`async`，我们这次用的`amqplib`包处理异步就是使用的`Promise`方式。
+
+那`Promise`究竟是什么呢？`Promise`是对异步编程的一种抽象。它是一个代理对象，代表一个必须进行异步处理的函数返回的值或抛出的异常。`callback`是编写`Node.js`异步代码最最最简单的机制。可用这种原始的`callback`必须以牺牲控制流、异常处理和函数语义为代价，而我们在同步代码中已经习惯了它们的存在，不适应！`Promises`能带它们回来。
+
+`Promises`对象的核心部件是它的`then`方法。我们可以用这个方法从异步操作中得到返回值（传说中的履约值），或抛出的异常（传说中的拒绝的理由）。`then`方法有两个可选的参数，都是`callback`函数，分别是`onFulfilled`和`onRejected`，用代码说话。
+
+	var promise = doSomethingAync()
+	promise.then(onFulfilled, onRejected)
+
+`Promises`被解决时（异步处理已经完成）会调用`onFulfilled`和`onRejected`。因为只会有一种结果，所以这两个函数中仅有一个会被触发。
+
+下面是一个`readfile`返回`Promises`的例子，同时`then`之后返回的任然是那个`Promises`对象，也就是说我们可以像下面那样链式调用。
+
+	var promise = readFile()
+	
+	var promise2 = promise.then(function (data) {
+	  //如果读取文件成功，那开始读取另外一个文件，readAnotherFile
+	  return readAnotherFile()
+	}, function (err) {
+	  //如果读取出错，那打印错误信息，并且任然继续读取另外一个文件，readAnotherFile
+	  console.error(err)
+	  return readAnotherFile()
+	})
+	//将读取的另外一个文件（readAnotherFile）异步的处理结果打印出来
+	.then(console.log, console.error)
+
+使用`Promise`最显著的特性就是我们不必对嵌套的所有异常都做显式的处理，我们看下面的为代码。
+
+	doThisAsync()
+  	.then(doThatAsync)
+	.then(doanotherAsync)
+  	.then(null, console.error)
+
+上述`doThisAsync`，`doThatAsync`或`doanotherAsync`异步中的任何一个错误，都回被最后的`then`语句捕获，并作处理。
+
+	
+
+
+
+
+
+
+
+解读完服务器的代码后，我们创建`client.js`用来发送消息`。
+
+	var amqp = require('amqplib');
+	var when = require('when');
+	
+	amqp.connect('amqp://localhost').then(function(conn) {
+	  return when(conn.createChannel().then(function(ch) {
+	    var q = 'hello';
+	    var msg = 'Hello World!';
+	
+	    var ok = ch.assertQueue(q, {durable: false});
+	    
+	    return ok.then(function(_qok) {
+	      ch.sendToQueue(q, new Buffer(msg));
+	      console.log(" [x] Sent '%s'", msg);
+	      return ch.close();
+	    });
+	  })).ensure(function() { conn.close(); });;
+	}).then(null, console.warn);
+
+我们还需要安装一下`when`这个模块才能让`client.js`工作，执行`npm install when`。同样，我们还是先解释下客户端代码的运行流程。
+
+接着我们进入命令行，执行如下命令启动消息队列服务器。
+
+	$ node server.js
+	[*] Waiting for messages. To exit press CTRL+C
+
+然后我们启动客户端，发送消息给服务器。
+
+	$ node client.js
+	[x] Sent 'Hello World!'
+
+客户端消息发送完毕后，自动退出了，这时候切换到服务器的`ssh`窗口，我们看到服务器这边也打印出了客户端发送过来的数据。
+
+	[*] Waiting for messages. To exit press CTRL+C
+	[x] Received 'Hello World!'
+
+一个简单的`RabbitMQ`的例子我们就跑起来了，接下来我们要分别学习下几种不一样的队列样式，这些队列在日常开发中都非常有用
 
 ##RabbitMQ的工作队列
 
@@ -108,3 +214,5 @@
 
 #参考文献
 - <http://blog.iron.io/2012/12/top-10-uses-for-message-queue.html?spref=tw> Top 10 Uses For A Message Queue
+- <https://github.com/squaremo/rabbit.js> rabbit.js
+- <http://www.ituring.com.cn/article/54547> 在Node.js 中用 Q 实现Promise – Callbacks之外的另一种选择 
