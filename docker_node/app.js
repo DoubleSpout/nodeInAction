@@ -22,7 +22,7 @@ app.get('/', function(req, res){
 	  			if(err){
 		  			return res.send('set access count error')
 		  		}
-		  		res.send(countNum.toString())
+		  		res.send('total visited: '+countNum.toString())
 	  		})
 	  })
 });
