@@ -705,20 +705,20 @@
 接下来就是先把老的代码删除，然后解压缩新的代码，并安装依赖和重启服务，还记得我们之前启动的`Container`叫什么名字吗？我们在`Exec command`一栏中填入如下命令。
 	
 	docker rm -f nodeCountAccess
-
-	rm -rf /var/node/docker_node/app.js
-	rm -rf /var/node/docker_node/package.json
 	
 	mkdir /var/node
 	mkdir /var/node/docker_node
 	mkdir /var/log/pm2
-
-	tar -xvf /var/node_access_count.tar.gz -C /var/node/docker_node
-
-	docker run --rm -i -t -v /var/node/docker_node:/var/node/docker_node -w /var/node/docker_node/ doublespout/node_pm2 npm install
 	
+	rm -rf /var/node/docker_node/app.js
+	rm -rf /var/node/docker_node/package.json
+	
+	tar -xvf /var/node_access_count.tar.gz -C /var/node/docker_node
+	
+	docker run --rm -v /var/node/docker_node:/var/node/docker_node -w /var/node/docker_node/ doublespout/node_pm2 cnpm install
+		
 	docker run -d --name "nodeCountAccess" -p 8000:8000 -v /var/node/docker_node:/var/node/docker_node -v /var/log/pm2:/root/.pm2/logs/ --link redis-server:redis -w /var/node/docker_node/  doublespout/node_pm2 pm2 start --no-daemon app.js
-
+	
 	rm -rf /var/node_access_count.tar.gz
 	
 下面我们简单说明一下这些命令的含义。
