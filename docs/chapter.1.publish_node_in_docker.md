@@ -735,7 +735,7 @@
 
 6、最后我们执行删除发送过来的代码包的操作。
 
-如果服务器在国内，那我们需要将`Exec timeout (ms)`设置的长一些，这样在`git`操作和`npm`操作的时候不会因为超时而报错。
+如果服务器在国内，那我们需要将`Exec timeout (ms)`设置的长一些，这样在`git`操作和`cnpm`操作的时候不会因为超时而报错。
 
 ![](http://7u2pwi.com1.z0.glb.clouddn.com/jenkins_ex12.png)
 
@@ -744,7 +744,8 @@
 
 ![](http://7u2pwi.com1.z0.glb.clouddn.com/jenkins_ex9.png)
 
-点击这条构建历史，然后进入`Console Output`还能看到当前的构建进度，如果构建出错也可以从这里找到错误原因，修改构建配置。
+点击这条构建历史，然后进入`Console Output`还能看到当前的构建进度，如果构建出错也可以从这里找到错误原因，修改构建配置。所以真正部署到生产服务器，由于权限，路径等，在执行命令上可能有所差异，我们编写部署脚本的时候需要多尝试几次，仔细查看打印出错的信息，相应的去修改脚本。
+
 
 ![](http://7u2pwi.com1.z0.glb.clouddn.com/jenkins_ex10.png)
 
