@@ -88,23 +88,23 @@
 然我们写一个`hello world`的示例的服务器不分，并把它保存在`/var/node/rabbit_hello/server.js`。
 
 	var amqp = require('amqplib');
-	amqp.connect('amqp://127.0.0.1').then(function(conn) {
-	  process.once('SIGINT', function() { conn.close(); });
-	  return conn.createChannel().then(function(ch) {
+	amqp.connect('amqp://127.0.0.1').then(function(conn) { 	   (1)
+	  process.once('SIGINT', function() { conn.close(); });	   (2)
+	  return conn.createChannel().then(function(ch) {		   (3)
     
-	    var ok = ch.assertQueue('hello', {durable: false});    
+	    var ok = ch.assertQueue('hello', {durable: false});    (4)
 
 	    ok = ok.then(function(_qok) {
-	      return ch.consume('hello', function(msg) {
+	      return ch.consume('hello', function(msg) {		  （5）
 	        console.log(" [x] Received '%s'", msg.content.toString());
 	      }, {noAck: true});
 	    });
 	    
-	    return ok.then(function(_consumeOk) {
+	    return ok.then(function(_consumeOk) {                 （6）
 	      console.log(' [*] Waiting for messages. To exit press CTRL+C');
 	    });
 	  });
-	}).then(null, console.warn);
+	}).then(null, console.warn);							   (7)
 
 下面我们来解释下这些代码的流程。在解释上述代码之前，我们需要简单解释一下`then`方法，它是`Node.js`用来处理异步回调的方法之一，一般我们处理`Node.js`异步回调嵌套的方法有两种，`Promise`和`async`，我们这次用的`amqplib`包处理异步就是使用的`Promise`方式。
 
@@ -141,35 +141,49 @@
 
 上述`doThisAsync`，`doThatAsync`或`doanotherAsync`异步中的任何一个错误，都回被最后的`then`语句捕获，并作处理。
 
-	
+现在我们回到代码，代码(1)处表示我们连接本地`127.0.0.1`的`RabbitMQ`队列，并返回一个`Promise`对象。
 
+代码(2)，表示接受`CTRL+C`的退出信号时我们关闭和`RabbitMQ`的链接`conn.close();`。
 
+代码(3)，`conn.createChannel()`表示创建一个通道，然后代码(4)，我们通过`ch.assertQueue`在这个通道上监听`hello`这个队列，并设置队列持久化为`false`，最后返回一个`Promise`对象。
 
+代码(5)，接下来的代码就是让通道消费`hello`这个队列，并写上处理函数，打印消息数据，同时返回一个`Promise`。
 
+代码(6)，在设置监听消费成功之后，我们打印一行文本，表示服务器正常工作，等待客户端的数据。
 
-
+代码(7)，当操作过程中有错误时，执行`console.warn`打印错误。
 
 解读完服务器的代码后，我们创建`client.js`用来发送消息`。
 
 	var amqp = require('amqplib');
-	var when = require('when');
+	var when = require('when');	
 	
-	amqp.connect('amqp://localhost').then(function(conn) {
-	  return when(conn.createChannel().then(function(ch) {
+	amqp.connect('amqp://localhost').then(function(conn) {		(1)
+	  return when(conn.createChannel().then(function(ch) {	    (2)
 	    var q = 'hello';
 	    var msg = 'Hello World!';
 	
-	    var ok = ch.assertQueue(q, {durable: false});
+	    var ok = ch.assertQueue(q, {durable: false});           (3)
 	    
-	    return ok.then(function(_qok) {
+	    return ok.then(function(_qok) {                         (4)
 	      ch.sendToQueue(q, new Buffer(msg));
 	      console.log(" [x] Sent '%s'", msg);
 	      return ch.close();
 	    });
-	  })).ensure(function() { conn.close(); });;
+	  })).ensure(function() { conn.close(); });                 (5)
 	}).then(null, console.warn);
 
-我们还需要安装一下`when`这个模块才能让`client.js`工作，执行`npm install when`。同样，我们还是先解释下客户端代码的运行流程。
+我们还需要安装一下`when`这个模块才能让`client.js`工作，执行`npm install when`。`when`模块是一个高性能稳定的实现`Promise`的`Node.js`异步处理包，接着我们还是解释下客户端代码的运行流程。
+
+代码(1)，连接本地的`RabbitMQ`队列，这个和服务器代码一样。
+
+代码(2)，用`when(x)`包装一个`Promise`对象，任然返回一个`Promise`对象，这边我们创建一个通道。
+
+代码(3)，同样我们把通道绑定到`hello`队列，并且持久化设定为`false`。
+
+代码(4)，我们向这个队列发送`Buffer`，内容为`'Hello World!'`，发送完毕之后关闭通道。
+
+代码(5)，在通道关闭之后，我们把整个链接也关闭，`ensure`就类似执行扫尾工作的函数，是`promise.finally`的别名。
 
 接着我们进入命令行，执行如下命令启动消息队列服务器。
 
@@ -186,7 +200,7 @@
 	[*] Waiting for messages. To exit press CTRL+C
 	[x] Received 'Hello World!'
 
-一个简单的`RabbitMQ`的例子我们就跑起来了，接下来我们要分别学习下几种不一样的队列样式，这些队列在日常开发中都非常有用
+一个简单的`RabbitMQ`的例子我们就跑起来了，接下来我们要分别学习下几种不一样的队列样式，这些队列在日常开发中都非常有用。
 
 ##RabbitMQ的工作队列
 
@@ -204,9 +218,6 @@
 
 
 ##RabbitMQ方案和Http方案的对比
-
-
-##RabbitMQ消息队列适用场景思考
 
 
 ##小结
