@@ -85,6 +85,10 @@
 	$ cd /var/node
 	$ npm install amqplib
 
+现在我们打算建立这样一个队列，一个生产者往队列中填充数据，一个消费者对队列的数据进行消费，如下图所示。
+
+![](http://7u2pwi.com1.z0.glb.clouddn.com/rabbit_1.png)
+
 然我们写一个`hello world`的示例的服务器不分，并把它保存在`/var/node/rabbit_hello/server.js`。
 
 	var amqp = require('amqplib');
@@ -203,9 +207,154 @@
 一个简单的`RabbitMQ`的例子我们就跑起来了，接下来我们要分别学习下几种不一样的队列样式，这些队列在日常开发中都非常有用。
 
 ##RabbitMQ的工作队列
+现在我们来看一个稍微复杂一点的队列，一个生产者配合多个消费者的队列，这样的队列场景可能我日常生产环境中利用的比较多，将一个复杂的任务负载均衡到各个节点，相比只有一个消费者的队列，这样不至于队列堆积过长，同时也能保证队列的响应时间，如下图所示，这条队列拥有两个消费者。
 
+![](http://7u2pwi.com1.z0.glb.clouddn.com/rabbit_2.png)
+
+接下来的所有示例，我们将不再使用`Promise`风格的代码，使用更加普遍的`callback`方式来展现代码，上一节的`Promise`示例主要是想让读者了解下`Node.js`处理异步回调的另一种方式。
+
+首先是`server`的代码，保存为`receive.js`。
+
+	var amqp = require('amqplib/callback_api');								(1)
+	
+	function bail(err, conn) {												(2)
+	  console.error(err);
+	  if (conn) conn.close(function() { process.exit(1); });
+	}
+	
+	function on_connect(err, conn) {										(3)
+	  if (err !== null) return bail(err);
+	  process.once('SIGINT', function() { conn.close(); });					(4)
+	  
+	  var q = 'task_queue';
+	
+	  conn.createChannel(function(err, ch) {								(5)
+	    if (err !== null) return bail(err, conn);
+	    ch.assertQueue(q, {durable: true}, function(err, _ok) {				(6)
+	      ch.consume(q, doWork, {noAck: false});							(7)
+	      console.log(" [*] Waiting for messages. To exit press CTRL+C");
+	    });
+	
+	    function doWork(msg) {												(8)
+	      var body = msg.content.toString();
+	      console.log(" [x] Received '%s'", body);
+	      var secs = body.split('.').length - 1;								(9)
+	      setTimeout(function() {
+	        console.log(" [x] Done");
+	        ch.ack(msg);
+	      }, secs * 1000);
+	    }
+	  });
+	}
+	
+	amqp.connect(on_connect);
+	
+针对上述代码我们简单做一下解释：
+
+(1)表示引入回调函数的`api`对象来处理`RabbitMQ`队列。
+
+(2)定义了出错的函数，当出现错误后，会打印错误并且关闭连接，退出进程。
+
+(3)定义了当程序成功启动，并且成功连入`RabbitMQ`后执行的回调函数，包括接收数据，处理异常等操作。
+
+(4)监听进程信号，当进程接收到`SIGINT`信号后，将关闭连接，`SIGINT`信号就是我们熟知的`CTRL+C`。
+
+(5)对连接`conn`对象执行创建`channel`的操作，创建成功后将做监听动作。
+
+(6)断言监听队列`q`，也就是名为`task_queue`的队列。
+
+(7)在收到`q`队列消息后，执行`ch.consume()`方法来把这部分数据丢到`doWork`方法中去消费，并且将`noAck`设置为`false`，表示对消费的结果做出响应。
+
+(8)定义`doWork`函数，用来消费数据，接受到数据后，将数据`toString()`转为字符串，然后打印数据
+
+(9)根据数据字符串中的`.`的个数，模拟处理这个数据所要消耗的描述，在等待`secs*1000`秒之后，将`msg`响应回客户端。
+
+下面我们来看下将数据发送到队列的客户端的代码，保存为`new_task.js`
+
+	var amqp = require('amqplib/callback_api');						
+	
+	function bail(err, conn) {										
+	  console.error(err);
+	  if (conn) conn.close(function() { process.exit(1); });
+	}
+	
+	function on_connect(err, conn) {								
+	  if (err !== null) return bail(err);
+	
+	  var q = 'task_queue';												(1)
+	  
+	  conn.createChannel(function(err, ch) {
+	    if (err !== null) return bail(err, conn);						(2)
+	    ch.assertQueue(q, {durable: true}, function(err, _ok) {			(3)
+	      if (err !== null) return bail(err, conn);
+	      var msg = process.argv.slice(2).join(' ') || "Hello World!";	(4)
+	      ch.sendToQueue(q, new Buffer(msg), {persistent: true});		(5)
+	      console.log(" [x] Sent '%s'", msg);
+	      ch.close(function() { conn.close(); });
+	    });
+	  });
+	}
+	
+	amqp.connect(on_connect);
+
+客户端代码同服务器代码雷同，主要就是将消费这部分代码修改为生产即可。
+
+(1)定义队列名`task_queue`，这里要和服务器那边的名字相同
+
+(2)当创建`channel`出错后执行关闭连接和退出进程操作。
+
+(3)连入队列`q`，然后传入回调函数
+
+(4)接收进程启动参数，如果没有参数就使用`Hello World!`字符串
+
+(5)将消息`msg`发送到队列中
+
+我们在命令分别执行2次如下命令，启动2个`receive.js`来处理任务。
+	
+	$ node receive.js
+	[*] Waiting for messages. To exit press CTRL+C
+
+	$ node receive.js
+	[*] Waiting for messages. To exit press CTRL+C
+
+然后我们执行多次客户端来发送消息，查看2个`receive.js`的打印数据。
+
+	$ node new_task.js First message.
+	$ node new_task.js Second message..
+	$ node new_task.js Third message...
+	$ node new_task.js Fourth message....
+	$ node new_task.js Fifth message.....
+
+第一个`receive.js`打印的数据。
+
+	[x] Received 'First message.'
+	[x] Received 'Third message...'
+	[x] Received 'Fifth message.....'
+
+第二个`receive.js`打印的数据。
+	
+	[x] Received 'Second message..'
+	[x] Received 'Fourth message....'	
+
+这样我们就实现了将任务平均的分给了2个消费者来处理了，可能随着我们的任务量增大，可以逐步的增加消费者来增强队列的计算能力。
 
 ##RabbitMQ的PUB/SUB队列
+上一节我们将一个比较复杂的任务平均分配给了多个消费者来处理，这样有助于减轻整个系统的负载，但也可能有这样的需求，同样一个消息，可能有多个消费者订阅，这样的情境我们就需要使用到`PUB/SUB`了，我们的队列如下图所示。
+
+![](http://7u2pwi.com1.z0.glb.clouddn.com/rabbit_3.png)
+
+上图中的两个消费者，`C1`将会记录日志，而`C2`将会打印日志，每一个消费者都将接收到数据包。在`RabbitMQ`中的核心思想就是每一个生产者都不直接将消息丢入到队列中，甚至于生产者根本就不知道这个消息将会被送到哪个或哪几个消费者手中，这样解耦的思想有利于我们整个系统。
+
+所以在这个系统中，生产者只是把消息传递给`exchange`，`exchange`是一个非常简单的东西，它的一边连接着生产者，接收生产者发送过来的数据，另一边连接着队列，负责把数据推送到队列中去。`exchange`必须知道它将对接受到的数据做什么处理，例如将数据推送到指定的队列，又或者推送到多条队列中等等，这样类似的行为，我们称之为`exchange`类型。这些类型是预设好的，有如下几个类型供我们选择：`direct`, `topic`, `headers`和`fanout`。
+
+本节我们将使用`fanout`类型的`exchange`来为整个系统服务，`fanout`中文直译就是扇出，表示将消息多播出去。
+
+
+
+
+
+
+
 
 
 ##RabbitMQ的队列路由
