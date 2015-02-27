@@ -149,7 +149,9 @@
 
 代码(2)，表示接受`CTRL+C`的退出信号时我们关闭和`RabbitMQ`的链接`conn.close();`。
 
-代码(3)，`conn.createChannel()`表示创建一个通道，然后代码(4)，我们通过`ch.assertQueue`在这个通道上监听`hello`这个队列，并设置队列持久化为`false`，最后返回一个`Promise`对象。
+代码(3)，`conn.createChannel()`表示创建一个通道，
+
+代码(4)，我们通过`ch.assertQueue`在这个通道上监听`hello`这个队列，并设置`durable`队列持久化为`false`，最后返回一个`Promise`对象。
 
 代码(5)，接下来的代码就是让通道消费`hello`这个队列，并写上处理函数，打印消息数据，同时返回一个`Promise`。
 
@@ -261,7 +263,7 @@
 
 (5)对连接`conn`对象执行创建`channel`的操作，创建成功后将做监听动作。
 
-(6)断言监听队列`q`，也就是名为`task_queue`的队列。
+(6)断言监听队列`q`，也就是名为`task_queue`的队列
 
 (7)在收到`q`队列消息后，执行`ch.consume()`方法来把这部分数据丢到`doWork`方法中去消费，并且将`noAck`设置为`false`，表示对消费的结果做出响应。
 
@@ -349,18 +351,343 @@
 
 本节我们将使用`fanout`类型的`exchange`来为整个系统服务，`fanout`中文直译就是扇出，表示将消息多播出去。
 
+我们先看生产者的代码，保存为`emit_log.js`。
 
+	var amqp = require('amqplib/callback_api');
+	
+	function bail(err, conn) {
+	  console.error(err);
+	  if (conn) conn.close(function() { process.exit(1); });
+	}
+	
+	function on_connect(err, conn) {
+	  if (err !== null) return bail(err);
+	
+	  var ex = 'logs';											(1)
+	
+	  function on_channel_open(err, ch) {
+	    if (err !== null) return bail(err, conn);
+	    ch.assertExchange(ex, 'fanout', {durable: false});		(2)
+	    var msg = process.argv.slice(2).join(' ') ||			
+	      'info: Hello World!';
+	    ch.publish(ex, '', new Buffer(msg));					(3)
+	    console.log(" [x] Sent '%s'", msg);
+	    ch.close(function() { conn.close(); });
+	  }
+	
+	  conn.createChannel(on_channel_open);
+	}
+	
+	amqp.connect(on_connect);
 
+生产者的代码较之前没有什么大的变化，主要的区别就是生产者不直接把数据推送给队列了，而是推送给`exchange`。
 
+(1)命名`exchange`为`logs`
 
+(2)定义`exchange`，命名为`logs`，类型为`fanout`,`durable`持久化队列为`false`。
 
+(3)将消息`msg`推送给`exchange`节点，其中`publish`函数第二个参数为路由配置，我们在下一节会详细说明。
+
+当我们消息推送给`exchange`后，消费者就需要从队列中获取消息，并做处理了，我们保存消费者代码为`receive_logs.js`。
+
+	var amqp = require('amqplib/callback_api');
+	
+	function bail(err, conn) {
+	  console.error(err);
+	  if (conn) conn.close(function() { process.exit(1); });
+	}
+	
+	function on_connect(err, conn) {
+	  if (err !== null) return bail(err);
+	  process.once('SIGINT', function() { conn.close(); });
+	
+	  var ex = 'logs';
+	  
+	  function on_channel_open(err, ch) {
+	    if (err !== null) return bail(err, conn);
+	    ch.assertQueue('', {exclusive: true}, function(err, ok) {				(1)
+	      var q = ok.queue;														(2)
+	      ch.bindQueue(q, ex, '');												(3)
+	      ch.consume(q, logMessage, {noAck: true}, function(err, ok) {			(4)
+	        if (err !== null) return bail(err, conn);
+	        console.log(" [*] Waiting for logs. To exit press CTRL+C.");
+	      });
+	    });
+	  }
+	
+	  function logMessage(msg) {												(5)
+	    if (msg)
+	      console.log(" [x] '%s'", msg.content.toString());
+	  }
+	
+	  conn.createChannel(on_channel_open);
+	}
+	
+	amqp.connect(on_connect);
+
+我们之前消费的队列都是命名过的，这里我们不需要对队列命名，而是让`RabbitMQ`随机给队列命名即可，我们只需要在声明队列时不传入名称就可以生成一个随机名称的队列。
+
+(1)声明随机名称队列，`exclusive`参数为`true`表示，当消费者断开队列连接，此队列就会删除。
+
+(2)通过`ok.queue`获取队列对象。
+
+(3)将队列和`exchange`绑定在一起，第三个参数是路由配置，我们暂时留空，下一节会有说明。
+
+(4)开始消费队列中的数据，这里我们还定义了消费完成后的回调函数。
+
+(5)定义了如何消费这些数据的`logMessage`函数。
+
+我们先启动两个`receive_logs.js`，等待消费队列数据。
+
+	$ node receive.js
+	$ node receive.js
+
+然后我们启动生产者，向这2个消费者广播数据，再分别看这2个消费者是否都打印出队列数据。
+
+	$ node emit_log.js
 
 
 
 ##RabbitMQ的队列路由
+上一节我们实现了生产者对多个消费者的广播消息，但实际上很多情况，我们的消费者是多种多样的，比如我们有对日志`error`专门分析的消费者，有对日志操作出纯打印的消费者等等，这些消费者要根据自己的需要去获取队列里的数据，这样我们就要用到`exchange`的路由功能了，模型图如下。
+
+![](http://7u2pwi.com1.z0.glb.clouddn.com/rabbit_4.png)
+
+要使用`exchange`的路由功能，我们就需要在定义`exchange`时修改他的类型了，上一节的`fanout`类型在这里已经不适用，它只能无脑的广播，所以我们需要将`exchange`修改为`direct`类型。`direct`类型的`exchange`节点算法很简单，它会把消息推送到绑定这个消息的路由的队列中去。简单点说，就是生产者将消息和路由的`key`推送给`exchange`，`exchange`则根据哪个或哪几个消费队列绑定了这个路由`key`，从而把消息再推送到这些队列中，供消费者消费。
+
+我们先看生产者的代码，保存为`emit_log_direct.js`。
+
+	var amqp = require('amqplib/callback_api');
+	
+	var args = process.argv.slice(2);
+	var severity = (args.length > 0) ? args[0] : 'info';				(1)
+	var message = args.slice(1).join(' ') || 'Hello World!';			
+	
+	function bail(err, conn) {
+	  console.error(err);
+	  if (conn) conn.close(function() { process.exit(1); });
+	}
+	
+	function on_connect(err, conn) {
+	  if (err !== null) return bail(err);
+	
+	  var ex = 'direct_logs';											(2)
+	  var exopts = {durable: false};
+	  
+	  function on_channel_open(err, ch) {
+	    if (err !== null) return bail(err, conn);
+	    ch.assertExchange(ex, 'direct', exopts, function(err, ok) {		(3)
+	      ch.publish(ex, severity, new Buffer(message));				(4)
+	      ch.close(function() { conn.close(); });
+	    });
+	  }
+	  conn.createChannel(on_channel_open);
+	}
+	
+	amqp.connect(on_connect);
+
+(1)我们根据启动参数，定义了路由`key`变量`severity`，默认值为`info`。
+
+(2)我们为`exchange`节点命名为`direct_logs`。
+
+(3)声明`exchange`，类型为`direct`。
+
+(4)向名为`direct_logs`的`exchange`节点推送数据，并且带上路由`key`变量`severity`。
+
+然后我们来看看，消费者是如何绑定路由`key`从而来消费这些数据的，保存代码为`receive_logs_direct.js`。
+
+	var amqp = require('amqplib/callback_api');
+	
+	var basename = require('path').basename;
+	
+	var severities = process.argv.slice(2);									(1)
+	if (severities.length < 1) {
+	  console.log('Usage %s [info] [warning] [error]',
+	              basename(process.argv[1]));
+	  process.exit(1);
+	}
+	
+	function bail(err, conn) {
+	  console.error(err);
+	  if (conn) conn.close(function() { process.exit(1); });
+	}
+	
+	function on_connect(err, conn) {
+	  if (err !== null) return bail(err);
+	  process.once('SIGINT', function() { conn.close(); });
+	
+	  conn.createChannel(function(err, ch) {
+	    if (err !== null) return bail(err, conn);
+	    var ex = 'direct_logs', exopts = {durable: false};					(2)
+	
+	    ch.assertExchange(ex, 'direct', exopts);							(3)
+	    ch.assertQueue('', {exclusive: true}, function(err, ok) {			(4)
+	      if (err !== null) return bail(err, conn);
+	
+	      var queue = ok.queue, i = 0;										(5)
+	
+	      function sub(err) {												(6)
+	        if (err !== null) return bail(err, conn);
+	        else if (i < severities.length) {								
+	          ch.bindQueue(queue, ex, severities[i], {}, sub);
+	          i++;
+	        }
+	      }
+	
+	      ch.consume(queue, logMessage, {noAck: true}, function(err) {		(7)
+	        if (err !== null) return bail(err, conn);
+	        console.log(' [*] Waiting for logs. To exit press CTRL+C.');
+	        sub(null);														
+	      });
+	    });
+	  });
+	}
+	
+	function logMessage(msg) {												(8)
+	  console.log(" [x] %s:'%s'",
+	              msg.fields.routingKey,
+	              msg.content.toString());
+	}
+	
+	amqp.connect(on_connect);
+
+消费者的代码稍微有点长，不过我们对此的大部分代码还是比较熟悉的，所以理解起来也不难。
+
+(1)我们从启动命令中获取一个需要绑定路由`key`的数组，比如我们的启动命令`node receive_logs_direct.js error info`，这样变量`severities`就保存了`["error", "info"]`。如果没有任何路由`key`，程序将打印提示信息并退出。
+
+(2)这里和生产者一样，我们定义了`exchange`的名字为`direct_logs`。
+
+(3)声明`exchange`，这里需要和生产者声明的一样。
+
+(4)声明队列，在队列声明成功之后，我们要定义消费函数。
+
+(5)获得已经声明的队列对象`queue`，设定`i=0`表示待路由`key`的位置。
+
+(6)定义`sub`函数，用来绑定`exchange`和队列，如果`i`的位置小于`severities`数组长度，则绑定队列并且完成绑定后再调用`sub`继续绑定队列。
+
+(7)定义消费函数`logMessage`，在定义完消费函数之后，执行`sub()`函数开始第(6)步的绑定操作
+
+(8)`logMessage`是消费队列数据函数，操作就是打印路由`key`和消息内容。
+
+同样，我们还是先启动消费者，启动一个绑定路由`key`为`error`的消费者，再启动一个绑定路由`key`为`erro, warning, info`的消费者。
+
+	$ node receive_logs_direct.js info warning error
+	[*] Waiting for logs. To exit press CTRL+C
+
+	$ node receive_logs_direct.js error
+	[*] Waiting for logs. To exit press CTRL+C
+
+然后我们分别执行，发送`error`级别的消息和`info`级别的消息，在发送`error`级别的消息时，两个消费者都打印出了信息，但是当发送`info`级别的消息时，就只有其中一个打印消息了。
+
+	$ node emit_log_direct.js error "Run. Run. Or it will explode."
+	[x] Sent 'error':'Run. Run. Or it will explode.'
+
+	$ node emit_log_direct.js info "Run. Run. Or it will explode."
+	[x] Sent 'info':'Run. Run. Or it will explode.'
 
 
 ##RabbitMQ的RPC远程过程调用
+`RabbitMQ`还有另外一项功能，那就是提供`RPC`服务，`RPC`服务英文全称为`Remote Procedure Call`，直接翻译就是`远程过程调用`。通过`RPC`服务,客户端就可以像调用本地函数那样，调用远程的方法，传参数然后得到最终结果。本节就将介绍如何利用`RabbitMQ`提供一个可扩展性的`RPC`服务，我们会让`RPC`服务器计算`斐波那契数组`来模拟耗时的运算。
+
+先建立提供`RPC`服务的`server`端代码，保存为`rpc_server.js`。
+
+	var amqp = require('amqplib/callback_api');
+	
+	function fib(n) {														(1)
+	  var a = 0, b = 1;
+	  for (var i=0; i < n; i++) {
+	    var c = a + b;
+	    a = b; b = c;
+	  }
+	  return a;
+	}
+	
+	function bail(err, conn) {
+	  console.error(err);
+	  if (conn) conn.close(function() { process.exit(1); });
+	}
+	
+	function on_connect(err, conn) {
+	  if (err !== null) return bail(err);
+	
+	  process.once('SIGINT', function() { conn.close(); });
+	
+	  var q = 'rpc_queue';													(2)
+	
+	  conn.createChannel(function(err, ch) {
+	    ch.assertQueue(q, {durable: false});								(3)
+	    ch.prefetch(1);														(4)
+	    ch.consume(q, reply, {noAck:false}, function(err) {					(5)
+	      if (err !== null) return bail(err, conn);
+	      console.log(' [x] Awaiting RPC requests');
+	    });
+	
+	    function reply(msg) {												(6)
+	      var n = parseInt(msg.content.toString());							(7)
+	      console.log(' [.] fib(%d)', n);
+	      ch.sendToQueue(msg.properties.replyTo,							(8)
+	                     new Buffer(fib(n).toString()),
+	                     {correlationId: msg.properties.correlationId});
+	      ch.ack(msg);														(9)
+	    }
+	  });
+	}
+	
+	amqp.connect(on_connect);
+
+服务端代码较之前几节还是有明显区别，
+
+发起调用`RPC`的客户端代码，保存为`rpc_client.js`。
+
+	var amqp = require('amqplib/callback_api');
+	var basename = require('path').basename;
+	var uuid = require('node-uuid');											(1)
+	
+	var n;
+	try {																	(2)
+	  if (process.argv.length < 3) throw Error('Too few args');
+	  n = parseInt(process.argv[2]);
+	}
+	catch (e) {
+	  console.error(e);
+	  console.warn('Usage: %s number', basename(process.argv[1]));
+	  process.exit(1);
+	}
+	
+	function bail(err, conn) {
+	  console.error(err);
+	  if (conn) conn.close(function() { process.exit(1); });
+	}
+	
+	function on_connect(err, conn) {
+	  if (err !== null) return bail(err);
+	  conn.createChannel(function(err, ch) {
+	    if (err !== null) return bail(err, conn);
+	
+	    var correlationId = uuid();											(3)
+	    function maybeAnswer(msg) {
+	      if (msg.properties.correlationId === correlationId) {				(4)
+	        console.log(' [.] Got %d', msg.content.toString());
+	      }
+	      else return bail(new Error('Unexpected message'), conn);
+	      ch.close(function() { conn.close(); });
+	    }
+	
+	    ch.assertQueue('', {exclusive: true}, function(err, ok) {			(5)
+	      if (err !== null) return bail(err, conn);
+	      var queue = ok.queue;	
+	      ch.consume(queue, maybeAnswer, {noAck:true});						(6)
+	      console.log(' [x] Requesting fib(%d)', n);
+	      ch.sendToQueue('rpc_queue', new Buffer(n.toString()), {			(7)
+	        replyTo: queue, correlationId: correlationId
+	      });
+	    });
+	  });
+	}
+	
+	amqp.connect(on_connect);
+
+
 
 	
 ##基于RabbitMQ的Node.js和Python通信实例
