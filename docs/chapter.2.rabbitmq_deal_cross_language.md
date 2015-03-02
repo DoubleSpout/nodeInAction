@@ -750,14 +750,108 @@
 
 对于`http`协议通信的优点和缺点，本节不做阐述，下一节将会对它进行详细的分析，本节主要介绍如何通过`RabbitMQ`这个媒介，让`Node.js`和`Python`建立起通信的桥梁。
 
+我们还是从最简单的入手，`Node.js`端作为生产者，通过`RabbitMQ`消息队列，发送一个`Hello World`，然后`Python`端作为消费者，打印出这个`Hello World`字符串。
 
+把`Python`作为跨语言通信实例的语言，有几方面考虑。
 
+其一，`Python`是各个`Linux`发行版本都自带的语言，一般`CentOs`或`Ubuntu`都会在系统中预装入`Python`语言，大部分是`2.6.x`或`2.7.x`，所以我们在`Linux`上运行这个实例就非常简单了，不需要去安装其他语言环境。
 
+其二，`Python`语言以其简洁闻名，就算你没有任何`Python`的基础，凭借其他语言的开发经验，任然能够很轻松的读懂`Python`，所以如果读者以前没有接触过`Python`也没关系，照着代码大致是能够看懂流程的。
 
+其三，`RabbitMQ`官方提供的示例，默认就是`Python`语言，所以拿`Python`作为实例更贴切不过。
 
+我们先看生产者`Node.js`的代码，套用第一个例子，保存为`send.js`。
 
+	var amqp = require('amqplib/callback_api');
+	
+	function bail(err, conn) {
+	  console.error(err);
+	  if (conn) conn.close(function() { process.exit(1); });
+	}
+	
+	function on_connect(err, conn) {
+	  if (err !== null) return bail(err);
+	
+	  var q = 'hello';
+	  var msg = 'Hello World!';
+	
+	  function on_channel_open(err, ch) {
+	    if (err !== null) return bail(err, conn);
+	    ch.assertQueue(q, {durable: false}, function(err, ok) {
+	      if (err !== null) return bail(err, conn);
+	      ch.sendToQueue(q, new Buffer(msg));
+	      console.log(" [x] Sent '%s'", msg);
+	      ch.close(function() { conn.close(); });
+	    });
+	  }
+	
+	  conn.createChannel(on_channel_open);
+	}
+	
+	amqp.connect(on_connect);
 
+代码再熟悉不过了，我们接下来看下消费者`Python`的代码，在跑`Python`之前，需要安装`Python`的`RabbitMQ`连接客户端`pika`，我们分别执行如下命令，安装`Python`的`pip`（和`Node.js`中的`Npm`一样是，包管理软件），然后我们通过`pip`安装`pika`。
 
+	$ wget https://bootstrap.pypa.io/get-pip.py
+	$ python get-pip.py
+	$ pip install pika
+	$ pip list
+	pika (0.9.8)
+
+现在我们贴上`Python`端的代码，保存为`receive.py`，然后把它运行起来。
+
+	import pika																(1)
+
+	connection = pika.BlockingConnection(pika.ConnectionParameters(			(2)
+	        host='localhost'))
+	channel = connection.channel()											(3)
+	
+	channel.queue_declare(queue='hello')									(4)
+	
+	print ' [*] Waiting for messages. To exit press CTRL+C'
+	
+	def callback(ch, method, properties, body):								(5)
+	    print " [x] Received %r" % (body,)
+	
+	channel.basic_consume(callback,											(6)
+	                      queue='hello',
+	                      no_ack=True)
+	
+	channel.start_consuming()												(7)
+
+	print 'never print me!'													(8)
+
+(1)引入`pika`包，这个和`Node.js`的`require`功能相同
+
+(2)建立连接，然后返回连接对象。
+
+(3)声明一个频道`channel`，这`Node.js`用法相同。
+
+(4)对这个频道声明队列，对名字和`Node.js`声明的相同，都是`hello`
+
+(5)定义消费的回调函数，这点和`Node.js`定义回调函数也是相似的，只不过`Python`不支持像`Node.js`那样的匿名函数写法，需要定义一个变量。
+
+(6)声明消费。
+
+(7)开始执行消费，这里也是类似事件循环的机制，当有消息推送到大，就会触发消费事件，执行`callback`函数了。
+
+(8)因为第7步进入了事件循环，所以第8步的打印信息永远不会被输出出来。
+	
+运行脚本和`Node.js`也一样，直接输入如下命令。
+
+	$ python receive.py
+
+我们启动`Node.js`，向`Python`发送消息。
+
+	$ node send.js
+	[x] Sent 'Hello World!'
+
+这时候`Python`端就会收到信息，然后打印出这条消息的内容。
+
+	[*] Waiting for messages. To exit press CTRL+C
+	[x] Received 'Hello World!'
+
+通过这个简单的实例，我们可以扩散出很多利用`RabbitMQ`跨语言通信的消息队列，比如带路由的，带消费者响应的队列等等，总之有了`RabbitMQ`跨语言异步通信问题将不再是问题了。
 
 ##RabbitMQ方案和Http方案的对比
 对于整个后端架构系统，使用`http`协议和`json`格式进行多进程或多服务器通信是非常常用的方式，它最突出的优点就是简单，从以下几个方面来说`http`方式都是简单的。
