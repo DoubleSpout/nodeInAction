@@ -2,6 +2,7 @@
 
 var amqp = require('amqplib/callback_api');
 
+
 function bail(err, conn) {
   console.error(err);
   if (conn) conn.close(function() { process.exit(1); });

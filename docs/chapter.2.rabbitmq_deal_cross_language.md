@@ -874,6 +874,243 @@
 
 接下来我们拿数据说话，我们分别模拟`http`的处理场景和`RabbitMQ`的场景，然后利用压力测试软件查看在各个并发和持续请求的情况下，两种处理方案的性能和稳定性。
 
+我们先看第一种情况，`http`的`restful`方式，来处理`斐波那契数组`求和的系统架构模型，流程如下图：
+
+![](http://7u2pwi.com1.z0.glb.clouddn.com/http_vs_rabbitmq.png)	
+	
+我们先编写使用`http`方式，`web`服务器的代码，保存为`http_web_server.js`。测试时，我们使用的`express`版本为``。
+
+	var express = require('express');
+	var request = require('request');
+	var app = express();
+	
+	app.get('/', function(req, res){
+	  res.send('hello world');
+	});
+	
+	//定义路由
+	var uri = 'http://192.168.1.110:8000/fibcal/%d';//定义请求到后端的url地址
+	var timeOut = 30*1000;//超时时间为30秒
+	app.param('num', /^\d+$/);
+	app.get('/fib/:num', function(req, res){
+		var num = req.params.num
+		//利用request库发送http请求
+		request({
+		    method:'GET',
+		    timeout:timeOut,
+		    uri:util.format(uri, num)
+		}, function(error, req_res, body){
+			if(error){
+				res.send(500, error);
+			}
+			else if(req_res.statusCode != 200){
+				res.send(500, req_res.statusCode);
+			}
+			else{
+				res.send(body);
+			}
+			
+		})
+	})
+	app.listen(3000);
+
+我们在`192.168.1.110`服务器上安装`Nginx`然后配置如下，相关`Nginx`的配置文件如下，在前一章中我们已经对`Nginx`如果作为`Node.js`的反向代理进行过介绍，如果忘记的读者可以翻回去看下。
+	
+	#定义启动2个Nginx进程
+	worker_processes 2;
+	events {
+		#设置最大连接数2048个
+	    worker_connections  2048;
+	}
+	http {
+	    include       mime.types;
+	    default_type  application/octet-stream;
+	    server_names_hash_bucket_size 64;
+		access_log off;
+	
+	    sendfile        on;
+	    keepalive_timeout  65;
+		
+		#定义后台地址，Node.js计算斐波那契数组的服务器监听3000-3002端口
+		upstream backend  {
+		  server 127.0.0.1:3000;
+		  server 127.0.0.1:3001;
+		  server 127.0.0.1:3002;
+		}
+		
+		#反向代理配置
+	    server {
+	        listen 8000;
+	        location / {
+	          proxy_pass backend;
+	          proxy_redirect default;
+	          proxy_http_version 1.1;
+	          proxy_set_header Upgrade $http_upgrade;
+	          proxy_set_header Connection $http_connection;
+	          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+	          proxy_set_header Host $http_host;
+	        }
+	    }
+	}
+
+启动好`Nginx`之后，我们开始编写`Node.js`计算`斐波那契数组`之和的脚本代码，保存为`http_backend_fib.js`。
+
+	var express = require('express');
+	var app = express();
+	//根据启动命令的第3个参数，监听不同的端口
+	var listenPort = parseInt(process.argv[2] || 3000);
+	
+	var fib = function(n) {
+		  var a = 0, b = 1;
+		  for (var i=0; i < n; i++) {
+		    var c = a + b;
+		    a = b; b = c;
+		  }
+		  return a;
+		}
+	
+	app.get('/', function(req, res){
+	  res.send('hello world, listenPort: '+listenPort);
+	});
+	
+	//定义路由，计算斐波那契
+	app.param('num', /^\d+$/);
+	app.get('/fibcal/:num', function(req, res){
+		var num = req.params.num
+		var calResult = {
+			'listenPort':listenPort,
+			'result':fib(num)
+		}
+		res.send(calResult)
+	})
+	
+	app.listen(listenPort);	
+
+这样我们通过下面3个命令就可以启动`backend`的`Node.js`服务了。
+
+	$ node http_backend_fib.js 3000
+	$ node http_backend_fib.js 3001
+	$ node http_backend_fib.js 3002
+
+我们可以直接访问`Nginx`那台服务器的`8000`端口，查看相应情况，检查`Nginx`的反向代理是否正常工作，正常情况下会随机出现`hello world, listenPort:300X`的字符串响应。
+
+接下来我们就要对这个`http`的系统架构进行压力测试了，这里我们使用轻量级的压力测试软件`siege`。
+
+压力测试结果如下：.........................
+
+搭建和测试完`http`的系统结构之后，我们开始设计利用`RabbitMQ`来处理同样的问题和同样的负荷，设计的系统结构图如下。
+
+![](http://7u2pwi.com1.z0.glb.clouddn.com/http_vs_rabbitmq2.png)
+
+我们把`RabbitMQ`安装在`backend`服务器上，然后开始编写`web`服务器的代码，保存为`rabbit_mq_server.js`。
+
+	var express = require('express');
+	var request = require('request');
+	var amqp = require('amqplib/callback_api');
+	var uuid = require('node-uuid');
+	
+	var correlationId = uuid();
+	var app = express();
+	var channel;
+	var q = 'fib'
+	
+	app.get('/', function(req, res){
+	  res.send('hello world');
+	});
+	
+	//定义路由
+	app.param('num', /^\d+$/);
+	app.get('/fib/:num', function(req, res){
+		var num = req.params.num
+		var answer = function(msg){
+			res.send(msg.content.toString())
+		}
+		ch.consume(q, answer, {noAck:true});
+		ch.sendToQueue(
+			q, 
+			new Buffer(num.toString()), 
+			{replyTo:q, correlationId:correlationId}
+		);
+	})
+	
+	var bail = function(err, conn) {
+	  console.error(err);
+	  if (conn) conn.close(function() { process.exit(1); });
+	}
+	
+	var on_connect = function(err, conn) {
+	  if (err !== null) return bail(err);
+	
+	  var on_channel_open = function(err, ch) {
+	    if (err !== null) return bail(err, conn);
+	    ch.assertQueue(q, {durable: false}, function(err, ok) {
+		      if (err !== null) return bail(err, conn);
+		      channel = ch
+	    });
+	  }
+	  conn.createChannel(on_channel_open);
+	}
+	
+	amqp.connect('urlurlurlurlurl', {'noDelay':true}, on_connect);
+	
+	app.listen(3000);
+
+接着我们编写3个消费者进程的代码，保存为`rabbit_backend_fib.js`，代码如下。
+
+	var amqp = require('amqplib/callback_api');
+		
+	function fib(n) {														(1)
+	  var a = 0, b = 1;
+	  for (var i=0; i < n; i++) {
+	    var c = a + b;
+	    a = b; b = c;
+	  }
+	  return a;
+	}
+	
+	function bail(err, conn) {
+	  console.error(err);
+	  if (conn) conn.close(function() { process.exit(1); });
+	}
+	
+	function on_connect(err, conn) {
+	  if (err !== null) return bail(err);
+	
+	  process.once('SIGINT', function() { conn.close(); });
+	
+	  var q = 'rpc_queue';													
+	
+	  conn.createChannel(function(err, ch) {
+	    ch.assertQueue(q, {durable: false});								
+	    ch.prefetch(1);														
+	    ch.consume(q, reply, {noAck:false}, function(err) {					
+	      if (err !== null) return bail(err, conn);
+	      console.log(' [x] Awaiting RPC requests');
+	    });
+	
+	    function reply(msg) {												
+	      var n = parseInt(msg.content.toString());
+	      ch.sendToQueue(msg.properties.replyTo,							
+	                     new Buffer(fib(n).toString()),
+	                     {correlationId: msg.properties.correlationId});
+	      ch.ack(msg);														
+	    }
+	  });
+	}
+	
+	amqp.connect(on_connect);
+
+输入下面的命令，我们启动3个消费者`Node.js`实例。
+
+	$ node rabbit_backend_fib.js
+	$ node rabbit_backend_fib.js
+	$ node rabbit_backend_fib.js
+
+然后我们用同样的压力负荷，来测试利用`RabbitMQ`的表现如何，有没有什么特别的发现。
+
+测试结果。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。
+	
+
 
 ##小结
 本节介绍了`Node.js`如何利用成熟消息队列方案`RabbitMQ`中的各种队列形式，并提供了一个简单的利用消息队列跨语言通信的例子。最后我们对比了`http`通信方式和`RabbitMQ`通信方式的区别和应用场景，可以帮助我们以后开发系统应用，考虑什么时候使用简单的`http`通信，什么时候需要架上`RabbitMQ`了，另外`RabbitMQ`也是可以搭建集群来提供它的稳定性和处理性能的，我们可以在它的官方文档中找到详细搭建集群的方式。
