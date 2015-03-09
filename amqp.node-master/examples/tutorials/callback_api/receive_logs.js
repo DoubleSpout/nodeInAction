@@ -14,15 +14,21 @@ function on_connect(err, conn) {
   var ex = 'logs';
   
   function on_channel_open(err, ch) {
-    if (err !== null) return bail(err, conn);
-    ch.assertQueue('', {exclusive: true}, function(err, ok) {
-      var q = ok.queue;
-      ch.bindQueue(q, ex, '');
-      ch.consume(q, logMessage, {noAck: true}, function(err, ok) {
-        if (err !== null) return bail(err, conn);
-        console.log(" [*] Waiting for logs. To exit press CTRL+C.");
-      });
-    });
+     if (err !== null) return bail(err, conn);
+	 ch.assertExchange('logs', 'fanout', {durable: false}, function(err){
+		  if (err !== null) return bail(err, conn);
+		  ch.assertQueue('', {exclusive: true}, function(err, ok) {
+		  var q = ok.queue;
+		  ch.bindQueue(q, ex, '');
+		  ch.consume(q, logMessage, {noAck: true}, function(err, ok) {
+			if (err !== null) return bail(err, conn);
+			console.log(" [*] Waiting for logs. To exit press CTRL+C.");
+		  });
+		});
+		 
+	 });
+	
+    
   }
 
   function logMessage(msg) {

@@ -17,8 +17,7 @@ app.get('/', function(req, res){
 });
 
 //定义路由，计算斐波那契
-app.param('num', /^\d+$/);
-app.get('/fibcal/:num', function(req, res){
+app.get('/fibcal/:num([0-9]+)', function(req, res){
 	var num = req.params.num
 	var calResult = {
 		'listenPort':listenPort,
@@ -28,3 +27,4 @@ app.get('/fibcal/:num', function(req, res){
 })
 
 app.listen(listenPort);
+console.log('server listen on  '+listenPort);

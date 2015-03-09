@@ -249,7 +249,7 @@
 	  });
 	}
 	
-	amqp.connect(on_connect);
+	amqp.connect('amqp://localhost', on_connect);
 	
 针对上述代码我们简单做一下解释：
 
@@ -297,7 +297,7 @@
 	  });
 	}
 	
-	amqp.connect(on_connect);
+	amqp.connect('amqp://localhost', on_connect);
 
 客户端代码同服务器代码雷同，主要就是将消费这部分代码修改为生产即可。
 
@@ -329,14 +329,21 @@
 
 第一个`receive.js`打印的数据。
 
+	[*] Waiting for messages. To exit press CTRL+C
 	[x] Received 'First message.'
+	[x] Done
 	[x] Received 'Third message...'
+	[x] Done
 	[x] Received 'Fifth message.....'
+	[x] Done
 
 第二个`receive.js`打印的数据。
 	
+	[*] Waiting for messages. To exit press CTRL+C
 	[x] Received 'Second message..'
-	[x] Received 'Fourth message....'	
+	[x] Done
+	[x] Received 'Fourth message....'
+	[x] Done
 
 这样我们就实现了将任务平均的分给了2个消费者来处理了，可能随着我们的任务量增大，可以逐步的增加消费者来增强队列的计算能力。
 
@@ -378,7 +385,7 @@
 	  conn.createChannel(on_channel_open);
 	}
 	
-	amqp.connect(on_connect);
+	amqp.connect('amqp://localhost', on_connect);
 
 生产者的代码较之前没有什么大的变化，主要的区别就是生产者不直接把数据推送给队列了，而是推送给`exchange`。
 
@@ -405,17 +412,20 @@
 	  
 	  function on_channel_open(err, ch) {
 	    if (err !== null) return bail(err, conn);
-	    ch.assertQueue('', {exclusive: true}, function(err, ok) {				(1)
-	      var q = ok.queue;														(2)
-	      ch.bindQueue(q, ex, '');												(3)
-	      ch.consume(q, logMessage, {noAck: true}, function(err, ok) {			(4)
-	        if (err !== null) return bail(err, conn);
-	        console.log(" [*] Waiting for logs. To exit press CTRL+C.");
-	      });
-	    });
+		ch.assertExchange(ex, 'fanout', {durable: false}, function(err){			(1)
+			if (err !== null) return bail(err, conn);
+		    ch.assertQueue('', {exclusive: true}, function(err, ok) {				(2)
+		      var q = ok.queue;														(3)
+		      ch.bindQueue(q, ex, '');												(4)
+		      ch.consume(q, logMessage, {noAck: true}, function(err, ok) {			(5)
+		        if (err !== null) return bail(err, conn);
+		        console.log(" [*] Waiting for logs. To exit press CTRL+C.");
+		      });
+		    });
+		})
 	  }
 	
-	  function logMessage(msg) {												(5)
+	  function logMessage(msg) {													(6)
 	    if (msg)
 	      console.log(" [x] '%s'", msg.content.toString());
 	  }
@@ -423,30 +433,51 @@
 	  conn.createChannel(on_channel_open);
 	}
 	
-	amqp.connect(on_connect);
+	amqp.connect('amqp://localhost', on_connect);
 
 我们之前消费的队列都是命名过的，这里我们不需要对队列命名，而是让`RabbitMQ`随机给队列命名即可，我们只需要在声明队列时不传入名称就可以生成一个随机名称的队列。
 
-(1)声明随机名称队列，`exclusive`参数为`true`表示，当消费者断开队列连接，此队列就会删除。
+(1)声明`fanout`类型的`exchange`，命名为`logs`。
 
-(2)通过`ok.queue`获取队列对象。
+(2)声明随机名称队列，`exclusive`参数为`true`表示，当消费者断开队列连接，此队列就会删除。
 
-(3)将队列和`exchange`绑定在一起，第三个参数是路由配置，我们暂时留空，下一节会有说明。
+(3)通过`ok.queue`获取队列对象。
 
-(4)开始消费队列中的数据，这里我们还定义了消费完成后的回调函数。
+(4)将队列和`exchange`绑定在一起，第三个参数是路由配置，我们暂时留空，下一节会有说明。
 
-(5)定义了如何消费这些数据的`logMessage`函数。
+(5)开始消费队列中的数据，这里我们还定义了消费完成后的回调函数。
+
+(6)定义了如何消费这些数据的`logMessage`函数。
 
 我们先启动两个`receive_logs.js`，等待消费队列数据。
 
-	$ node receive.js
-	$ node receive.js
+	$ node receive_logs.js
+	[*] Waiting for logs. To exit press CTRL+C.
 
-然后我们启动生产者，向这2个消费者广播数据，再分别看这2个消费者是否都打印出队列数据。
+	$ node receive_logs.js
+	[*] Waiting for logs. To exit press CTRL+C.
 
-	$ node emit_log.js
+然后我们启动生产者，向这2个消费者广播数据，这里我们分别抛出3条`Hello World`的消息。
 
+	$ node emit_log.js 
+	[x] Sent 'info: Hello World!'
+	$ node emit_log.js 
+	[x] Sent 'info: Hello World!'
+	$ node emit_log.js 
+	[x] Sent 'info: Hello World!'
 
+查看2个消费者的打印信息，分别如下，成功将消息广播出去了。
+
+第一个`receive_logs`进程打印的信息。
+	[x] 'info: Hello World!'
+	[x] 'info: Hello World!'
+	[x] 'info: Hello World!'
+
+第二个`receive_logs`进程打印的信息。
+
+	[x] 'info: Hello World!'
+	[x] 'info: Hello World!'
+	[x] 'info: Hello World!'
 
 ##RabbitMQ的队列路由
 上一节我们实现了生产者对多个消费者的广播消息，但实际上很多情况，我们的消费者是多种多样的，比如我们有对日志`error`专门分析的消费者，有对日志操作出纯打印的消费者等等，这些消费者要根据自己的需要去获取队列里的数据，这样我们就要用到`exchange`的路由功能了，模型图如下。
@@ -484,7 +515,7 @@
 	  conn.createChannel(on_channel_open);
 	}
 	
-	amqp.connect(on_connect);
+	amqp.connect('amqp://localhost', on_connect);
 
 (1)我们根据启动参数，定义了路由`key`变量`severity`，默认值为`info`。
 
@@ -549,7 +580,7 @@
 	              msg.content.toString());
 	}
 	
-	amqp.connect(on_connect);
+	amqp.connect('amqp://localhost', on_connect);
 
 消费者的代码稍微有点长，不过我们对此的大部分代码还是比较熟悉的，所以理解起来也不难。
 
@@ -585,6 +616,17 @@
 	$ node emit_log_direct.js info "Run. Run. Or it will explode."
 	[x] Sent 'info':'Run. Run. Or it will explode.'
 
+消费`info warning error`日志的消费者打印信息如下。
+
+	[*] Waiting for logs. To exit press CTRL+C.
+
+	[x] error:'Run. Run. Or it will explode.'
+	[x] info:'Run. Run. Or it will explode.
+
+消费`error`日志的消费者，只会打印`error`的消息了。
+
+	[*] Waiting for logs. To exit press CTRL+C.
+	[x] error:'Run. Run. Or it will explode.'
 
 ##RabbitMQ的RPC远程过程调用
 `RabbitMQ`还有另外一项功能，那就是提供`RPC`服务，`RPC`服务英文全称为`Remote Procedure Call`，直接翻译就是`远程过程调用`。通过`RPC`服务,客户端就可以像调用本地函数那样，调用远程的方法，传参数然后得到最终结果。本节就将介绍如何利用`RabbitMQ`提供一个可扩展性的`RPC`服务，我们会让`RPC`服务器计算`斐波那契数组`来模拟耗时的运算。
@@ -633,7 +675,7 @@
 	  });
 	}
 	
-	amqp.connect(on_connect);
+	amqp.connect('amqp://localhost', on_connect);
 
 服务端代码较之前几节还是有明显区别，这里的服务器代码我们将计算之后的结果返回给了客户端，之前都是未有返回值的。
 
@@ -705,7 +747,7 @@
 	  });
 	}
 	
-	amqp.connect(on_connect);
+	amqp.connect('amqp://localhost', on_connect);
 
 客户端代码也比之前多了不少，我们来简单分析一下这些代码。
 
@@ -735,16 +777,29 @@
 
 	$ node rpc_client.js 30
 	[x] Requesting fib(30)
+	[.] Got 832040
 
 	$ node rpc_client.js 35
-	[x] Requesting fib(30)
+	[x] Requesting fib(35)
+	[.] Got 9227465
 
 	$ node rpc_client.js 40
-	[x] Requesting fib(30)
+	[x] Requesting fib(40)
+	[.] Got 102334155
 
-如果发现消费者计算不过来了，我们可以启动多个进程用来增加整个系统的性能，扩展起来是非常方便的。
+如果发现消费者计算不过来了，我们可以启动多个进程用来增加整个系统的性能，扩展起来是非常方便的，下面是两个消费者打印的信息。
 
-	
+第一个`rpc_server`打印的信息如下。
+
+	[x] Awaiting RPC requests
+	[.] fib(30)
+	[.] fib(40)
+
+第二个`rpc_server`打印的信息如下。
+
+	[x] Awaiting RPC requests
+	[.] fib(35)
+
 ##基于RabbitMQ的Node.js和Python通信实例
 如今我们构建整个互联网后端架构，跨语言通信需求非常多，比如原有的系统是用`java`开发的，但是有一些非常适合`Node.js`发挥场景的地方我们又要使用`Node.js`来开发，而这两者之间的通信方法也有多种方法，目前跨语言最流行的通信方式就是用`http`的`restful`作为通信协议，数据包的格式协议使用`json`。
 
@@ -788,7 +843,7 @@
 	  conn.createChannel(on_channel_open);
 	}
 	
-	amqp.connect(on_connect);
+	amqp.connect('amqp://localhost', on_connect);
 
 代码再熟悉不过了，我们接下来看下消费者`Python`的代码，在跑`Python`之前，需要安装`Python`的`RabbitMQ`连接客户端`pika`，我们分别执行如下命令，安装`Python`的`pip`（和`Node.js`中的`Npm`一样是，包管理软件），然后我们通过`pip`安装`pika`。
 
@@ -796,7 +851,14 @@
 	$ python get-pip.py
 	$ pip install pika
 	$ pip list
-	pika (0.9.8)
+	iniparse (0.3.1)
+	**pika (0.9.14)**
+	pip (6.0.8)
+	pycurl (7.19.0)
+	pygpgme (0.1)
+	setuptools (14.0)
+	urlgrabber (3.9.1)
+	yum-metadata-parser (1.1.2)
 
 现在我们贴上`Python`端的代码，保存为`receive.py`，然后把它运行起来。
 
@@ -878,7 +940,7 @@
 
 ![](http://7u2pwi.com1.z0.glb.clouddn.com/http_vs_rabbitmq.png)	
 	
-我们先编写使用`http`方式，`web`服务器的代码，保存为`http_web_server.js`。测试时，我们使用的`express`版本为``。
+我们先编写使用`http`方式，`web`服务器的代码，保存为`http_web_server.js`。测试时，我们使用的`express`版本为`4.12.2`，`request`版本为`2.53.0`。
 
 	var express = require('express');
 	var request = require('request');
@@ -891,8 +953,7 @@
 	//定义路由
 	var uri = 'http://192.168.1.110:8000/fibcal/%d';//定义请求到后端的url地址
 	var timeOut = 30*1000;//超时时间为30秒
-	app.param('num', /^\d+$/);
-	app.get('/fib/:num', function(req, res){
+	app.get('/fib/:num([0-9]+)', function(req, res){
 		var num = req.params.num
 		//利用request库发送http请求
 		request({
@@ -912,7 +973,7 @@
 			
 		})
 	})
-	app.listen(3000);
+	app.listen(5000);
 
 我们在`192.168.1.110`服务器上安装`Nginx`然后配置如下，相关`Nginx`的配置文件如下，在前一章中我们已经对`Nginx`如果作为`Node.js`的反向代理进行过介绍，如果忘记的读者可以翻回去看下。
 	
@@ -942,7 +1003,7 @@
 	    server {
 	        listen 8000;
 	        location / {
-	          proxy_pass backend;
+	          proxy_pass http://backend;
 	          proxy_redirect default;
 	          proxy_http_version 1.1;
 	          proxy_set_header Upgrade $http_upgrade;
@@ -974,8 +1035,7 @@
 	});
 	
 	//定义路由，计算斐波那契
-	app.param('num', /^\d+$/);
-	app.get('/fibcal/:num', function(req, res){
+	app.get('/fibcal/:num([0-9]+)', function(req, res){
 		var num = req.params.num
 		var calResult = {
 			'listenPort':listenPort,
@@ -1019,8 +1079,7 @@
 	});
 	
 	//定义路由
-	app.param('num', /^\d+$/);
-	app.get('/fib/:num', function(req, res){
+	app.get('/fib/:num([0-9]+)', function(req, res){
 		var num = req.params.num
 		var answer = function(msg){
 			res.send(msg.content.toString())
@@ -1106,7 +1165,7 @@
 	$ node rabbit_backend_fib.js
 	$ node rabbit_backend_fib.js
 
-然后我们用同样的压力负荷，来测试利用`RabbitMQ`的表现如何，有没有什么特别的发现。
+然后我们用同样的压力负荷，来测试利用`RabbitMQ`的表现如何，看看有没有什么特别的发现。
 
 测试结果。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。
 	
