@@ -951,7 +951,7 @@
 	});
 	
 	//定义路由
-	var uri = 'http://192.168.1.110:8000/fibcal/%d';//定义请求到后端的url地址
+	var uri = 'http://127.0.0.1:8000/fibcal/%d';//定义请求到后端的url地址
 	var timeOut = 30*1000;//超时时间为30秒
 	app.get('/fib/:num([0-9]+)', function(req, res){
 		var num = req.params.num
@@ -974,12 +974,14 @@
 		})
 	})
 	app.listen(5000);
+	console.log('server listen on  5000');
 
 我们在`192.168.1.110`服务器上安装`Nginx`然后配置如下，相关`Nginx`的配置文件如下，在前一章中我们已经对`Nginx`如果作为`Node.js`的反向代理进行过介绍，如果忘记的读者可以翻回去看下。
 	
 	#定义启动2个Nginx进程
 	worker_processes 2;
 	events {
+		use epoll;
 		#设置最大连接数2048个
 	    worker_connections  2048;
 	}
@@ -1021,14 +1023,9 @@
 	//根据启动命令的第3个参数，监听不同的端口
 	var listenPort = parseInt(process.argv[2] || 3000);
 	
-	var fib = function(n) {
-		  var a = 0, b = 1;
-		  for (var i=0; i < n; i++) {
-		    var c = a + b;
-		    a = b; b = c;
-		  }
-		  return a;
-		}
+	function fibo(n) {//定义斐波那契数组计算函数
+	    return n > 1 ? fibo(n - 1) + fibo(n - 2) : 1;
+	}
 	
 	app.get('/', function(req, res){
 	  res.send('hello world, listenPort: '+listenPort);
@@ -1039,12 +1036,13 @@
 		var num = req.params.num
 		var calResult = {
 			'listenPort':listenPort,
-			'result':fib(num)
+			'result':fibo(num)
 		}
 		res.send(calResult)
 	})
 	
-	app.listen(listenPort);	
+	app.listen(listenPort);
+	console.log('server listen on  '+listenPort);
 
 这样我们通过下面3个命令就可以启动`backend`的`Node.js`服务了。
 
@@ -1054,9 +1052,40 @@
 
 我们可以直接访问`Nginx`那台服务器的`8000`端口，查看相应情况，检查`Nginx`的反向代理是否正常工作，正常情况下会随机出现`hello world, listenPort:300X`的字符串响应。
 
-接下来我们就要对这个`http`的系统架构进行压力测试了，这里我们使用轻量级的压力测试软件`siege`。
+接下来我们就要对这个`http`的系统架构进行压力测试了，这里我们使用轻量级的压力测试软件`siege`。下载和安装`siege`命令如下，本书编写的时候最新的版本为`3.0.9`，如果下面的地址无法提供下载，读者可以通过`google`自行搜索最新版本的`siege`软件下载地址。
 
-压力测试结果如下：.........................
+	$ wget http://download.joedog.org/siege/siege-latest.tar.gz
+	$ tar -zxvf siege-latest.tar.gz
+	$ cd siege-3.0.9/
+	$ ./configure
+	$ make && make install
+
+Siege命令常用参数
+
+	-c 200 指定并发数200
+	-r 5 指定测试的次数5
+	-f urls.txt 制定url的文件
+	-i internet系统，随机发送url
+	-b 请求无需等待 delay=0
+	-t 5 持续测试5分钟
+	# -r和-t一般不同时使用
+
+我们现在分别模拟`100`个并发，`500`个并发和`1000`个并发循环发送`10`次，这样的压力下计算`斐波那契`数组第`20`和第`30`项之和。命令如下，下面的这个命令就是`100`个客户端，循环`10`次，计算计算`斐波那契`数组前`10`项之和。
+
+	$ siege -c 100 -r 10 -q http://192.168.150.3:5000/fib/20
+
+下表是压力测试的结果，供读者参考，成功率都是100%，`trans/sec`标识系统每秒处理的事物数量，`longest(sec)`标识最长的返回请求时间，单位是秒。测试的服务器3台都是`2cpu`，`4G`内存的`linux x64`云服务器。其中`nginx`和`http_backend_fib.js`在一台服务器上，`http_web_server.js`在一台服务器上，压力测试服务器是另外一台，网络环境都是内网的`10G`交换机。
+
+							fib20		fib30
+	-------------------------------------------
+	c 100 trans/sec			112.06		42.39
+	c 100 longest(sec)		0.34		2.10
+
+	c 500 trans/sec			294.94		41.68	
+	c 500 longest(sec)		1.47		11.77
+
+	c 1000 trans/sec		372.16		40.28
+	c 1000 longest(sec)		2.84		24.83
 
 搭建和测试完`http`的系统结构之后，我们开始设计利用`RabbitMQ`来处理同样的问题和同样的负荷，设计的系统结构图如下。
 
@@ -1071,8 +1100,13 @@
 	
 	var correlationId = uuid();
 	var app = express();
-	var channel;
 	var q = 'fib'
+	var bail = function(err, conn) {
+	  console.error(err);
+	  if (conn) conn.close(function() { process.exit(1); });
+	}
+	var conn;
+	
 	
 	app.get('/', function(req, res){
 	  res.send('hello world');
@@ -1080,51 +1114,51 @@
 	
 	//定义路由
 	app.get('/fib/:num([0-9]+)', function(req, res){
-		var num = req.params.num
-		var answer = function(msg){
-			res.send(msg.content.toString())
-		}
-		ch.consume(q, answer, {noAck:true});
-		ch.sendToQueue(
-			q, 
-			new Buffer(num.toString()), 
-			{replyTo:q, correlationId:correlationId}
-		);
+		var num = req.params.num;
+			
+		//创建channel
+		conn.createChannel(function(err, ch){
+			if (err !== null) return bail(err, conn);
+			ch.assertQueue(q, {durable: false}, function(err, ok) {
+				  if (err !== null) return bail(err, conn);
+				  //定义消费函数
+				  ch.consume(q, function(msg){
+						//将返回值设置和http方式相同
+						//避免因为返回值的大小造成的测试数据偏差
+						res.send({
+							'listenPort':5001,
+							'result':msg.content.toString()
+						});
+						//这里为了提升性能，我们不关闭链接，而是关闭channel，链接可以重用
+						ch.close();
+					}, {noAck:true});
+				  //发送数据到消费者
+				  ch.sendToQueue(
+						q, 
+						new Buffer(num.toString()), 
+						{replyTo:q, correlationId:correlationId}
+					);  
+			});
+		});	
 	})
 	
-	var bail = function(err, conn) {
-	  console.error(err);
-	  if (conn) conn.close(function() { process.exit(1); });
+	var on_connect = function(err, rabbit_conn) {
+		if (err !== null) return bail(err);
+		conn = rabbit_conn;
 	}
 	
-	var on_connect = function(err, conn) {
-	  if (err !== null) return bail(err);
+	//建立连接
+	amqp.connect('amqp://127.0.0.1', {'noDelay':true}, on_connect);
 	
-	  var on_channel_open = function(err, ch) {
-	    if (err !== null) return bail(err, conn);
-	    ch.assertQueue(q, {durable: false}, function(err, ok) {
-		      if (err !== null) return bail(err, conn);
-		      channel = ch
-	    });
-	  }
-	  conn.createChannel(on_channel_open);
-	}
-	
-	amqp.connect('urlurlurlurlurl', {'noDelay':true}, on_connect);
-	
-	app.listen(3000);
+	app.listen(5001);
+	console.log('server listen on  5001');
 
 接着我们编写3个消费者进程的代码，保存为`rabbit_backend_fib.js`，代码如下。
 
 	var amqp = require('amqplib/callback_api');
-		
-	function fib(n) {														(1)
-	  var a = 0, b = 1;
-	  for (var i=0; i < n; i++) {
-	    var c = a + b;
-	    a = b; b = c;
-	  }
-	  return a;
+			
+	function fibo(n) {//定义斐波那契数组计算函数
+	    return n > 1 ? fibo(n - 1) + fibo(n - 2) : 1;
 	}
 	
 	function bail(err, conn) {
@@ -1137,27 +1171,27 @@
 	
 	  process.once('SIGINT', function() { conn.close(); });
 	
-	  var q = 'rpc_queue';													
+	  var q = 'fibq';													
 	
 	  conn.createChannel(function(err, ch) {
-	    ch.assertQueue(q, {durable: false});								
-	    ch.prefetch(1);														
-	    ch.consume(q, reply, {noAck:false}, function(err) {					
-	      if (err !== null) return bail(err, conn);
-	      console.log(' [x] Awaiting RPC requests');
-	    });
+		ch.assertQueue(q, {durable: false});								
+		ch.prefetch(1);														
+		ch.consume(q, reply, {noAck:false}, function(err) {					
+		  if (err !== null) return bail(err, conn);
+		  console.log(' [x] Awaiting RPC requests');
+		});
 	
-	    function reply(msg) {												
-	      var n = parseInt(msg.content.toString());
-	      ch.sendToQueue(msg.properties.replyTo,							
-	                     new Buffer(fib(n).toString()),
-	                     {correlationId: msg.properties.correlationId});
-	      ch.ack(msg);														
-	    }
+		function reply(msg) {												
+		  var n = parseInt(msg.content.toString());
+		  ch.sendToQueue(msg.properties.replyTo,							
+						 new Buffer(fibo(n).toString()),
+						 {correlationId: msg.properties.correlationId});
+		  ch.ack(msg);														
+		}
 	  });
 	}
 	
-	amqp.connect(on_connect);
+	amqp.connect('amqp://127.0.0.1',on_connect);
 
 输入下面的命令，我们启动3个消费者`Node.js`实例。
 
@@ -1165,9 +1199,18 @@
 	$ node rabbit_backend_fib.js
 	$ node rabbit_backend_fib.js
 
-然后我们用同样的压力负荷，来测试利用`RabbitMQ`的表现如何，看看有没有什么特别的发现。
+然后我们用同样的压力负荷，来测试利用`RabbitMQ`的表现如何，看看有没有什么特别的发现，其中我们把`rabbit_mq_server.js`放在一台服务器上，`RabbitMQ`和`rabbit_backend_fib.js`放在一台服务器，压力测试单独一台服务器，结果如下。
 
-测试结果。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。
+							fib20		fib30		
+	--------------------------------------------
+	c 100 trans/sec			64.14		33.82	
+	c 100 longest(sec)		2.19		2.81		
+
+	c 500 trans/sec			72.84		31.87	
+	c 500 longest(sec)		6.5			15.87
+
+	c 1000 trans/sec		72.97		30.19	
+	c 1000 longest(sec)		14.32		21.19	
 	
 
 

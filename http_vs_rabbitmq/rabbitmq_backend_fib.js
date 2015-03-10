@@ -1,12 +1,7 @@
 var amqp = require('amqplib/callback_api');
-	
-function fib(n) {														(1)
-  var a = 0, b = 1;
-  for (var i=0; i < n; i++) {
-    var c = a + b;
-    a = b; b = c;
-  }
-  return a;
+		
+function fibo(n) {//定义斐波那契数组计算函数
+    return n > 1 ? fibo(n - 1) + fibo(n - 2) : 1;
 }
 
 function bail(err, conn) {
@@ -19,24 +14,24 @@ function on_connect(err, conn) {
 
   process.once('SIGINT', function() { conn.close(); });
 
-  var q = 'rpc_queue';													
+  var q = 'fibq';													
 
   conn.createChannel(function(err, ch) {
-    ch.assertQueue(q, {durable: false});								
-    ch.prefetch(1);														
-    ch.consume(q, reply, {noAck:false}, function(err) {					
-      if (err !== null) return bail(err, conn);
-      console.log(' [x] Awaiting RPC requests');
-    });
+	ch.assertQueue(q, {durable: false});								
+	ch.prefetch(1);														
+	ch.consume(q, reply, {noAck:false}, function(err) {					
+	  if (err !== null) return bail(err, conn);
+	  console.log(' [x] Awaiting RPC requests');
+	});
 
-    function reply(msg) {												
-      var n = parseInt(msg.content.toString());
-      ch.sendToQueue(msg.properties.replyTo,							
-                     new Buffer(fib(n).toString()),
-                     {correlationId: msg.properties.correlationId});
-      ch.ack(msg);														
-    }
+	function reply(msg) {												
+	  var n = parseInt(msg.content.toString());
+	  ch.sendToQueue(msg.properties.replyTo,							
+					 new Buffer(fibo(n).toString()),
+					 {correlationId: msg.properties.correlationId});
+	  ch.ack(msg);														
+	}
   });
 }
 
-amqp.connect(on_connect);
+amqp.connect('amqp://127.0.0.1',on_connect);
