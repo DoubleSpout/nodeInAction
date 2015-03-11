@@ -1,6 +1,6 @@
-#基于RabbitMQ搭建跨语言通信队列
+#基于RabbitMQ搭建消息队列
 ##前言
-本章将主要介绍利用高性能队列软件`RabbitMQ`，解决web服务器或应用服务器间跨语言通信。通常我们对处理大并发，随之带来的CPU或I/O密集型问题最好的控制就是使用消息队列，对于服务器间跨语言通信以前我们一般使用`XMLRPC`，现在比较流行走`http`协议的`restful`方式，本章将介绍使用`RabbitMQ`来处理这部分事情，看它是如何高效、简单的完成任务的。
+本章主要介绍如何利用高性能消息队列软件`RabbitMQ`，解决web服务器或应用服务器间通信。通常我们对处理大并发，随之带来的CPU或I/O密集型问题最好的控制就是使用消息队列，对于服务器间跨语言通信，以前我们一般使用`XMLRPC`，现在比较流行`http`协议的`restful`方式，本章将介绍使用`RabbitMQ`来处理这部分事情，看它是如何高效、简单的完成任务的。
 
 在学习本章之前，读者需要对`Linux`基本命令行操作、`Express`框架、`python`语言有简单了解。
 
@@ -19,15 +19,15 @@
 
 2、冗余存储
 
-有时在处理数据的时候处理过程会失败。除非数据被持久化，否则将永远丢失。消息队列把数据进行持久化直到它们已经被完全处理，通过这一方式规避了数据丢失风险。在被许多消息队列所采用的"插入-获取-删除"范式中，在把一个消息从队列中删除之前，需要你的处理过程明确的指出该消息已经被处理完毕，确保你的数据被安全的保存直到你使用完毕。
+有时在处理数据的时候处理过程会失败。除非数据被持久化，否则将永远丢失。消息队列把数据进行持久化直到它们已经被完全处理，通过这一方式规避了数据丢失风险。在被许多消息队列所采用的“插入-获取-删除”范式中，在把一个消息从队列中删除之前，需要你的处理过程明确的指出该消息已经被处理完毕，确保你的数据被安全的保存直到你使用完毕。
 
 3、可扩展性
 
 因为消息队列解耦了你的处理过程，所以增大消息入队和处理的频率是很容易的；只要另外增加处理过程即可。不需要改变代码、不需要调节参数。扩展就像调大电力按钮一样简单。
 
-4、灵活性 & 峰值处理能力
+4、灵活性&峰值处理能力
 
-当你的应用上了Hacker News的首页，你将发现访问流量攀升到一个不同寻常的水平。在访问量剧增的情况下，你的应用仍然需要继续发挥作用，但是这样的突发流量并不常见；如果为以能处理这类峰值访问为标准来投入资源随时待命无疑是巨大的浪费。使用消息队列能够使关键组件顶住增长的访问压力，而不是因为超出负荷的请求而完全崩溃。请查看我们关于峰值处理能力的博客文章了解更多此方面的信息。
+当你的应用访问流量攀升到一个不同寻常的水平。在访问量剧增的情况下，你的应用仍然需要继续发挥作用，但是这样的突发流量并不常见；如果为以能处理这类峰值访问为标准来投入资源随时待命无疑是巨大的浪费。使用消息队列能够使关键组件顶住增长的访问压力，而不是因为超出负荷的请求而完全崩溃。请查看我们关于峰值处理能力的博客文章了解更多此方面的信息。
 
 5、可恢复性
 
@@ -35,11 +35,11 @@
 
 6、送达保证
 
-消息队列提供的冗余机制保证了消息能被实际的处理，只要一个进程读取了该队列即可。在此基础上，IronMQ提供了一个"只送达一次"保证。无论有多少进程在从队列中领取数据，每一个消息只能被处理一次。这之所以成为可能，是因为获取一个消息只是"预定"了这个消息，暂时把它移出了队列。除非客户端明确的表示已经处理完了这个消息，否则这个消息会被放回队列中去，在一段可配置的时间之后可再次被处理。
+消息队列提供的冗余机制保证了消息能被实际的处理，只要一个进程读取了该队列即可。在此基础上，`RabbitMQ`提供了一个"只送达一次"保证。无论有多少进程在从队列中领取数据，每一个消息只能被处理一次。这之所以成为可能，是因为获取一个消息只是"预定"了这个消息，暂时把它移出了队列。除非客户端明确的表示已经处理完了这个消息，否则这个消息会被放回队列中去，在一段可配置的时间之后可再次被处理。
 
 7、排序保证
 
-在许多情况下，数据处理的顺序都很重要。消息队列本来就是排序的，并且能保证数据会按照特定的顺序来处理。IronMO保证消息浆糊通过FIFO（先进先出）的顺序来处理，因此消息在队列中的位置就是从队列中检索他们的位置。
+在许多情况下，数据处理的顺序都很重要。消息队列本来就是排序的，并且能保证数据会按照特定的顺序来处理。`RabbitMQ`保证消息浆糊通过`FIFO`（先进先出）的顺序来处理，因此消息在队列中的位置就是从队列中检索他们的位置。
 
 8、缓冲
 
@@ -53,10 +53,10 @@
 
 很多时候，你不想也不需要立即处理消息。消息队列提供了异步处理机制，允许你把一个消息放入队列，但并不立即处理它。你想向队列中放入多少消息就放多少，然后在你乐意的时候再去处理它们。
 
-我们相信上述十个原因，使得消息队列成为在进程或应用之间进行通信的最好形式。我们已经花费了一年时间来创建和学习IronMQ，我们的客户也通过消息队列完成了许多不可思议的事情。队列是创建强大的分布式应用的关键，它可以利用云技术所提供的所有强大能量。
+我们相信上述十个原因，使得消息队列成为在进程或应用之间进行通信的最好形式。队列是创建强大的分布式应用的关键，它可以利用云技术所提供的所有强大能量。
 
 ##安装和启动RabbitMQ
-`RabbitMQ`就是诸多消息队列产品中的一款，虽然它不是速度性能最快的，但它却是应用广泛，相当稳定的一款消息队列产品，而且由于`RabbitMQ`是由`erlang`语言开发的，所以具有天生的分布式优势，这些都是我推荐`RabbitMQ`部署在生产环境的原因，官网对`RabbitMQ`的定义非常简单。
+`RabbitMQ`就是诸多消息队列产品中的一款，虽然它不是速度性能最快的，但它却是应用广泛，相当稳定的产品，而且由于`RabbitMQ`是由`erlang`语言开发的，所以具有天生的分布式优势，这些都是我推荐`RabbitMQ`部署在生产环境的原因，官网对`RabbitMQ`的定义非常简单。
 
 1、为应用而生的强大的消息队列
 
@@ -68,14 +68,14 @@
 
 5、开源和社区支持（言下之意就是免费哦~）
 
-关于各操作系统下载和启动的方式，官网有比较详细的文档，我这里就不再累述了，访问地址：[http://www.rabbitmq.com/download.html](http://www.rabbitmq.com/download.html "http://www.rabbitmq.com/download.html")，这里我主要介绍下使用上一章的`Docker`来安装和启动它，手握利器也要加以善用。
+关于各操作系统下载和启动的方式，官网有比较详细的文档，我这里就不再累述了，访问地址：[http://www.rabbitmq.com/download.html](http://www.rabbitmq.com/download.html "http://www.rabbitmq.com/download.html")，我主要介绍下使用上一章的`Docker`来安装和启动它，手握利器也要加以善用。
 	
 	#到截稿时，最新版本是3.4.3
 	$ sudo docker pull rabbitmq
 	#启动rabbitmq服务
 	$ docker run -d -e RABBITMQ_NODENAME=my-rabbit --name some-rabbit -p 5672:5672 rabbitmq:3
 
-是不是用了`Docker`我们就可以更加专心和专注的开发业务代码了，而不用为了装环境而浪费一天。下面几个小节，我们将学习`RabbitMQ`的各种队列，对我们的日常开发很有帮助。
+用了`Docker`我们就可以更加专心和专注的开发业务代码了，不用为了装环境而浪费一天。下面几个小节，我们将学习`RabbitMQ`的各种队列，对我们的日常开发很有帮助。
 
 ##RabbitMQ的Hello World
 要连接`RabbitMQ`我们需要安装连接包，我们依次执行命令，创建环境，这里我没使用官方推荐的`npm`包`amqp.node`。
@@ -936,57 +936,67 @@
 
 接下来我们拿数据说话，我们分别模拟`http`的处理场景和`RabbitMQ`的场景，然后利用压力测试软件查看在各个并发和持续请求的情况下，两种处理方案的性能和稳定性。
 
-我们先看第一种情况，`http`的`restful`方式，来处理抢购的场景，出于简单，我们规定只有前`10`名用户才能抢购秒杀到某一种商品。
+我们先看第一种情况，`http`的`restful`方式，来处理抢购的场景，出于简单，我们规定只有前`100`名用户才能抢购秒杀到某一种商品。
 
 我们数据库利用`Mongodb`，链接库使用`Mongoose`，`Mongodb`也是大家利用`Node.js`很常用的数据库，因为它的查询语句和返回结果都是`JSON`格式的，对`Node.js`非常友好，我们的程序设计流程如下。
 
 1、利用`count`操作获取订单集合`order`中的记录条数；如果`count`结果小于`10`，则执行`2`，否则执行`3`。
 
-2、当`count`结果小于`10`，那么我们就往`order`集合中插入一条记录，并返回秒杀成功。
+2、当`count`结果小于`100`，那么我们就往`order`集合中插入一条记录，并返回秒杀成功。
 
-3、当`count`结果大于等于`10`，我们就返回用户秒杀失败。
+3、当`count`结果大于等于`100`，我们就返回用户秒杀失败。
+
+注意：下面的代码并不是秒杀活动的最佳解决方案，也不是性能最优代码，只是为了说明`Http`通信方案和`RabbitMQ`通信方案的区别，生产例子中的秒杀服务的设计是根据实际的业务需求而架构的，并没有万能方案。
 
 `Http`方式，设计的各个系统节点的结构如下图。
 
 ![](http://7u2pwi.com1.z0.glb.clouddn.com/http_vs_rabbitmq_1.png)	
 	
-我们先编写使用`http`方式，`web`服务器的代码，保存为`http_web_server.js`。测试时，我们使用的`express`版本为`4.12.2`，`request`版本为`2.53.0`。
+我们先编写使用`http`方式，`web`服务器的代码，保存为`http_web_server.js`。测试时，我们使用的`express`版本为`4.12.2`，`request`版本为`2.53.0`，`mongoose`版本为`3.8.24`，`Node.js`版本为`0.10.32`。
 
 	var express = require('express');
 	var request = require('request');
+	var util = require('util');
 	var app = express();
+	//模拟的用户Id号
+	var globalUserId = 1;
 	
 	app.get('/', function(req, res){
 	  res.send('hello world');
 	});
 	
+	
 	//定义路由
-	var uri = 'http://127.0.0.1:8000/fibcal/%d';//定义请求到后端的url地址
+	var uri = 'http://127.0.0.1:8000/buy/%d';//定义请求到后端的url地址
 	var timeOut = 30*1000;//超时时间为30秒
-	app.get('/fib/:num([0-9]+)', function(req, res){
-		var num = req.params.num
+	
+	app.get('/buy/', function(req, res){
+		var num = globalUserId++;
 		//利用request库发送http请求
 		request({
-		    method:'GET',
-		    timeout:timeOut,
-		    uri:util.format(uri, num)
+			method:'GET',
+			timeout:timeOut,
+			uri:util.format(uri, num)
 		}, function(error, req_res, body){
 			if(error){
-				res.send(500, error);
+				res.status(500).send(error)
 			}
 			else if(req_res.statusCode != 200){
-				res.send(500, req_res.statusCode);
+				res.status(500).send(req_res.statusCode)
 			}
 			else{
 				res.send(body);
 			}
-			
-		})
-	})
+		});
+	});
 	app.listen(5000);
 	console.log('server listen on  5000');
 
-我们在`192.168.1.110`服务器上安装`Nginx`然后配置如下，相关`Nginx`的配置文件如下，在前一章中我们已经对`Nginx`如果作为`Node.js`的反向代理进行过介绍，如果忘记的读者可以翻回去看下。
+我们执行如下命令，启动`http_web_server.js`。
+
+	$ node http_web_server.js
+
+我们在`192.168.1.110`服务器上安装`Nginx`然后配置如下，相关`Nginx`的配置文件如下，在前一章中我们已经对`Nginx`如果作为`Node.js`的反向代理进行过介绍，如果忘记的读者可以翻回去看下，这里我们重温一下关于`Nginx`反向代理的设置。
 	
 	#定义启动2个Nginx进程
 	worker_processes 2;
@@ -1024,41 +1034,76 @@
 	    }
 	}
 
-启动好`Nginx`之后，我们开始编写`Node.js`计算`斐波那契数组`之和的脚本代码，保存为`http_backend_fib.js`。
+启动好`Nginx`之后，我们设计了一个公用的`Mongodb`的数据模型，代码如下，保存为`orderModel.js`。
+	
+	var mongoose = require('mongoose');
+	//定义Mongodb连接字符串
+	var connstr = 'mongodb://:@127.0.0.1:27017/http_vs_rabbit';
+	//连接池大小
+	var poolsize = 50;
+	//建立db的连接
+	mongoose.connect(connstr,{server:{poolSize:poolsize}});
+	
+	var Schema = mongoose.Schema;
+	
+	var obj = { //定义结构
+		  userId:{ type:Number, required:true},
+		  writeTime: { type: Date, default: function(){return Date.now()} },    //写入时间
+	}
+	var objSchema = new Schema(obj);
+	//count函数
+	objSchema.statics.countAll = function (obj,cb) {
+	       return this.count(obj||{}, cb);
+	}
+	//insert函数
+	objSchema.statics.insertOneByObj = function (obj,cb) {
+	 	   return this.create(obj||{},cb)
+	}
+	module.exports = mongoose.model('orders', objSchema);
+
+接着，我们开始编写判断订单数量和生成订单的代码，保存为`http_backend.js`。
 
 	var express = require('express');
+	//加载order订单集合的model
+	var orderModel = require('./orderModel.js');
 	var app = express();
-	//根据启动命令的第3个参数，监听不同的端口
-	var listenPort = parseInt(process.argv[2] || 3000);
-	
-	function fibo(n) {//定义斐波那契数组计算函数
-	    return n > 1 ? fibo(n - 1) + fibo(n - 2) : 1;
-	}
+	var listenPort = 3000;
 	
 	app.get('/', function(req, res){
 	  res.send('hello world, listenPort: '+listenPort);
 	});
 	
-	//定义路由，计算斐波那契
-	app.get('/fibcal/:num([0-9]+)', function(req, res){
-		var num = req.params.num
-		var calResult = {
-			'listenPort':listenPort,
-			'result':fibo(num)
-		}
-		res.send(calResult)
-	})
+	//定义路由，执行订单操作
+	app.get('/buy/:userid([0-9]+)', function(req, res){
+		var userid = req.params.userid;
+		orderModel.countAll({}, function(err, orderCount){
+			if(err) return res.status(500).send(err);
+			if(orderCount >= 100){//表示已经卖完了
+				return res.send('sold out!');
+			}
+			else{
+			//说明还有库存，没卖完，这时候就要往数据库插入一条带这个userid的订单记录了
+				orderModel.insertOneByObj({
+					'userId':userid,
+					'writeTime':new Date()
+				}, function(err, obj){
+					//创建订单成功，响应成功
+					if(err) return res.status(500).send(err);
+					return res.send('buy success, orderid: '+obj._id.toString());
+				});
+			}
+		});
+	
+	});
 	
 	app.listen(listenPort);
-	console.log('server listen on  '+listenPort);
+	console.log('server listen on  '+listenPort);	
 
-这样我们通过下面3个命令就可以启动`backend`的`Node.js`服务了。
+这样我们通过下面命令可以启动`backend`的`Node.js`服务。
 
-	$ node http_backend_fib.js 3000
-	$ node http_backend_fib.js 3001
-	$ node http_backend_fib.js 3002
+	$ node http_backend.js
 
-我们可以直接访问`Nginx`那台服务器的`8000`端口，查看相应情况，检查`Nginx`的反向代理是否正常工作，正常情况下会随机出现`hello world, listenPort:300X`的字符串响应。
+我们可以直接访问`Nginx`那台服务器的`8000`端口，查看相应情况，检查`Nginx`的反向代理是否正常工作，正常情况下会出现`hello world, listenPort:3000`的字符串响应。
 
 接下来我们就要对这个`http`的系统架构进行压力测试了，这里我们使用轻量级的压力测试软件`siege`。下载和安装`siege`命令如下，本书编写的时候最新的版本为`3.0.9`，如果下面的地址无法提供下载，读者可以通过`google`自行搜索最新版本的`siege`软件下载地址。
 
@@ -1078,28 +1123,31 @@ Siege命令常用参数
 	-t 5 持续测试5分钟
 	# -r和-t一般不同时使用
 
-我们现在分别模拟`10`个并发，`100`个并发和`500`个并发循环发送`5`次，看看这样的压力负载情况下，系统的处理能力和数据的准确性。
+我们现在分别模拟`100`个并发，`300`个并发和`500`个并发循环发送`10`次，看看这样的压力负载情况下，系统的处理能力和数据的准确性。
 
-	$ siege -c 100 -r 10 -q http://192.168.150.3:5000/fib/20
+	$ siege -c 100 -r 10 -q http://192.168.1.150:5000/buy
+
+如果在压力测试的时候出现如下错误，执行下面的命令即可。
+
+	$ [fatal] Unable to allocate additional memory.: Cannot allocate memory
+	$ ulimit -s unlimited
 
 下表是压力测试的结果，供读者参考，成功率都是100%，`trans/sec`标识系统每秒处理的事物数量，`longest(sec)`标识最长的返回请求时间，单位是秒。测试的服务器3台都是`2cpu`，`4G`内存的`linux x64`云服务器。其中`nginx`和`http_backend_fib.js`在一台服务器上，`http_web_server.js`在一台服务器上，压力测试服务器是另外一台，网络环境都是内网的`10G`交换机。
 
-							fib20		fib30
-	-------------------------------------------
-	c 100 trans/sec			112.06		42.39
-	c 100 longest(sec)		0.34		2.10
+				trans/sec		longest(sec)		orderCount
+	------------------------------------------------------------
+	c 100		97.18			3.16				101
 
-	c 500 trans/sec			294.94		41.68	
-	c 500 longest(sec)		1.47		11.77
+	c 300		221				3.99				101
 
-	c 1000 trans/sec		372.16		40.28
-	c 1000 longest(sec)		2.84		24.83
+	c 500		212.68			4.8					103
 
-搭建和测试完`http`的系统结构之后，我们开始设计利用`RabbitMQ`来处理同样的问题和同样的负荷，设计的系统结构图如下。
+
+为什么在`c500`和`c1000`的情况下秒杀下订单会有大于`100`个订单呢？我们先暂时把这些疑问搁置一边，开始设计如何利用`RabbitMQ`来处理同样的问题和同样的负荷，系统结构图如下。
 
 ![](http://7u2pwi.com1.z0.glb.clouddn.com/http_vs_rabbitmq_2.png)
 
-我们把`RabbitMQ`安装在`backend`服务器上，然后开始编写`web`服务器的代码，保存为`rabbit_mq_server.js`。
+我们把`RabbitMQ`安装在`backend`服务器上，然后开始编写`web`服务器的代码，保存为`rabbit_web_server.js`。
 
 	var express = require('express');
 	var request = require('request');
@@ -1108,35 +1156,37 @@ Siege命令常用参数
 	
 	var correlationId = uuid();
 	var app = express();
-	var q = 'fib'
+	var q = 'fibq';
+	var q2 = 'ackq'
+	
 	var bail = function(err, conn) {
-	  console.error(err);
-	  if (conn) conn.close(function() { process.exit(1); });
+		  console.error(err);
+		  if (conn) conn.close(function() { 
+		  	process.exit(1); 
+		  });
 	}
 	var conn;
-	
+	//模拟的用户Id号
+	var globalUserId = 1;
 	
 	app.get('/', function(req, res){
 	  res.send('hello world');
 	});
 	
 	//定义路由
-	app.get('/fib/:num([0-9]+)', function(req, res){
-		var num = req.params.num;
+	app.get('/buy/', function(req, res){
+		var num = globalUserId++;
 			
 		//创建channel
 		conn.createChannel(function(err, ch){
 			if (err !== null) return bail(err, conn);
-			ch.assertQueue(q, {durable: false}, function(err, ok) {
+			ch.assertQueue(q2, {durable: false}, function(err, ok) {
 				  if (err !== null) return bail(err, conn);
 				  //定义消费函数
-				  ch.consume(q, function(msg){
+				  ch.consume(q2, function(msg){
 						//将返回值设置和http方式相同
 						//避免因为返回值的大小造成的测试数据偏差
-						res.send({
-							'listenPort':5001,
-							'result':msg.content.toString()
-						});
+						res.send(msg.content.toString());
 						//这里为了提升性能，我们不关闭链接，而是关闭channel，链接可以重用
 						ch.close();
 					}, {noAck:true});
@@ -1144,7 +1194,10 @@ Siege命令常用参数
 				  ch.sendToQueue(
 						q, 
 						new Buffer(num.toString()), 
-						{replyTo:q, correlationId:correlationId}
+						{
+							replyTo:q2, 
+							correlationId:correlationId
+						}
 					);  
 			});
 		});	
@@ -1159,16 +1212,18 @@ Siege命令常用参数
 	amqp.connect('amqp://127.0.0.1', {'noDelay':true}, on_connect);
 	
 	app.listen(5001);
-	console.log('server listen on  5001');
+	console.log('server listen on 5001');
 
-接着我们编写3个消费者进程的代码，保存为`rabbit_backend_fib.js`，代码如下。
+执行如下命令，我们启动`rabbit_mq_server.js`服务。
+
+	$ node rabbit_mq_server.js
+
+接着我们编写消费者的代码，同样会去加载公共`orderModel`数据模型文件，保存为`rabbit_backend.js`，代码如下。
 
 	var amqp = require('amqplib/callback_api');
+	//加载order订单集合的model
+	var orderModel = require('./orderModel.js');
 			
-	function fibo(n) {//定义斐波那契数组计算函数
-	    return n > 1 ? fibo(n - 1) + fibo(n - 2) : 1;
-	}
-	
 	function bail(err, conn) {
 	  console.error(err);
 	  if (conn) conn.close(function() { process.exit(1); });
@@ -1184,48 +1239,85 @@ Siege命令常用参数
 	  conn.createChannel(function(err, ch) {
 		ch.assertQueue(q, {durable: false});								
 		ch.prefetch(1);														
-		ch.consume(q, reply, {noAck:false}, function(err) {					
-		  if (err !== null) return bail(err, conn);
-		  console.log(' [x] Awaiting RPC requests');
-		});
-	
-		function reply(msg) {												
-		  var n = parseInt(msg.content.toString());
-		  ch.sendToQueue(msg.properties.replyTo,							
-						 new Buffer(fibo(n).toString()),
+		
+		var ackSend = function(msg, content){
+			ch.sendToQueue(msg.properties.replyTo,							
+						 new Buffer(content.toString()),
 						 {correlationId: msg.properties.correlationId});
-		  ch.ack(msg);														
+		  	ch.ack(msg);	
 		}
+	
+		var reply = function(msg) {											
+			    var userid = parseInt(msg.content.toString());
+			    orderModel.countAll({}, function(err, orderCount){
+					if(err) return ackSend(msg, err);
+					if(orderCount >= 100){//表示已经卖完了
+						return ackSend(msg, 'sold out!');
+					}
+					else{
+						//说明还有库存，没卖完，这时候就要往数据库插入一条带这个userid的订单记录了
+						orderModel.insertOneByObj({
+							'userId':userid,
+							'writeTime':new Date()
+						}, function(err, obj){
+							//创建订单成功，响应成功 
+							if(err) return ackSend(msg,err);
+							return ackSend(msg, 'buy success, orderid: '+obj._id.toString());
+						});
+					}
+			    });  													
+			}
+	
+			ch.consume(q, reply, {noAck:false}, function(err) {					
+			  if (err !== null) return bail(err, conn);
+			  console.log(' [x] Awaiting RPC requests');
+			});
 	  });
+	
 	}
 	
 	amqp.connect('amqp://127.0.0.1',on_connect);
 
-输入下面的命令，我们启动3个消费者`Node.js`实例。
+输入下面的命令，我们启动消费者实例。
 
-	$ node rabbit_backend_fib.js
-	$ node rabbit_backend_fib.js
-	$ node rabbit_backend_fib.js
+	$ node rabbit_backend.js
 
-然后我们用同样的压力负荷，来测试利用`RabbitMQ`的表现如何，看看有没有什么特别的发现，其中我们把`rabbit_mq_server.js`放在一台服务器上，`RabbitMQ`和`rabbit_backend_fib.js`放在一台服务器，压力测试单独一台服务器，结果如下。
+然后我们用同样的压力负荷，来测试利用`RabbitMQ`的表现如何，看看有没有什么特别的发现，其中我们把`rabbit_mq_server.js`放在一台服务器上，`RabbitMQ`和`rabbit_backend.js`放在一台服务器，压力测试单独一台服务器，结果如下。
 
-							fib20		fib30		
-	--------------------------------------------
-	c 100 trans/sec			64.14		33.82	
-	c 100 longest(sec)		2.19		2.81		
+				trans/sec		longest(sec)		orderCount
+	------------------------------------------------------------
+	c 100		50.95			4.55				100
 
-	c 500 trans/sec			72.84		31.87	
-	c 500 longest(sec)		6.5			15.87
+	c 300		31.05			11.73				100
 
-	c 1000 trans/sec		72.97		30.19	
-	c 1000 longest(sec)		14.32		21.19	
-	
+	c 500		25.72			17.95				100
+
+
+对比一下`Http`的压力测试结果，我们发现每秒事务处理能力上，`RabbitMQ`是落后于`Http`方案的，也就是说整体系统的吞吐率`RabbitMQ`是不如`Http`的，好吧，我承认确实对`RabbitMQ`的测试结果有点意外，但是考虑到`RabbitMQ`方案，需要先使用队列获取数据再创建队列返回这些数据，所以比无序的`Http`请求性能差许多，也是意料之中。
+
+但是在`orderCount`这一项上，`RabbitMQ`做到了没有偏差，`Http`方案会有所误差，这在某些特殊情况下是不被允许的，所以如果我们的业务是有严格的先后顺序需求，利用`RabbitMQ`消息队列是一个靠谱的选择，虽然牺牲了些性能，但是换来了业务的稳定，而且我们还可以很方便的增加`RabbitMQ`的消费进程，来提高整体系统的吞吐率，同时多种多样的消费者配合路由实用性很高，加上广播、多播或单播让我们在使用上非常灵活。
+
+最后我们来看一下，为什么`Http`方案会出现并发量大，多插入记录的问题。
+
+首先我们要明确的是，`Node.js`的所有`I/O`操作都是异步的，也就是说，两次数据库操作是不会阻塞整个进程的，如果有这样的事情发生，就会出现多插入记录的情况了。
+
+1、`http_backend.js`在运行时，A请求运行到了`count`检查订单数量处，就像数据库发送一条`count`订单集合记录条数的命令。由于命令是异步的，所以`Node.js`进程发完这条指令，就开始继续接收其他请求，并等待A请求指令的返回。
+
+2、这时B请求被`Node.js`接收了，然后也向数据库发送了一条`count`订单集合记录条数的命令，因为也是异步操作，所以`Node.js`这时候就在等待A、B两个请求的回调函数执行。
+
+3、A请求的回调函数执行了，返回结果是`99`，表示还有`1`个库存，于是A请求就像数据库发出了一条插入数据的指令。插入操作同样是异步的，`Node.js`进程继续等待回调。
+
+4、B请求的回调函数紧接着也执行了，由于A请求的插入指令在B请求的`count`指令之后发出的，所以B请求的`count`回调函数返回的结果也是`99`。通过程序判断，B请求也发了一个插入记录的指令给数据库。
+
+5、最后，原本`99`条记录的数据集合，执行了连续A、B两个请求发出的插入指令，最终就变为了`101`条，我们的秒杀就多卖出了一件商品。
 
 
 ##小结
 本节介绍了`Node.js`如何利用成熟消息队列方案`RabbitMQ`中的各种队列形式，并提供了一个简单的利用消息队列跨语言通信的例子。最后我们对比了`http`通信方式和`RabbitMQ`通信方式的区别和应用场景，可以帮助我们以后开发系统应用，考虑什么时候使用简单的`http`通信，什么时候需要架上`RabbitMQ`了，另外`RabbitMQ`也是可以搭建集群来提供它的稳定性和处理性能的，我们可以在它的官方文档中找到详细搭建集群的方式。
 
 `RabbitMQ`是目前消息队列解决方案中比较成熟稳定的方案，虽然它的性能并不是最好的，但是可靠性已经被大家所认可，所以我们在有合适的使用消息队列的场景情况下，优先还是考虑`RabbitMQ`。
+
+本节最后的一个秒杀示例并不是很好的处理秒杀的方案，因为利用`RabbitMQ`来一条条插入数据库，实际上就是对数据库的表级别的锁，不利于性能。所以我们应该在设计秒杀、抢购这类系统时，利用数据库的行级锁，这样就可以大大的提高处理抢购业务时每秒的下单量。
 
 #参考文献
 - <http://blog.iron.io/2012/12/top-10-uses-for-message-queue.html?spref=tw> Top 10 Uses For A Message Queue
