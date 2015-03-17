@@ -190,9 +190,9 @@
 ##启动Container盒子
 看了上一节那些眼花缭乱的命令，再加上又是`Image`又是`Container`的，读者们是不是觉得很头晕，既然下载了`Image`为什么又会多一个`Container`了呢？在`Docker`世界里，它们之间的关系又是什么样子的呢？
 
-接下来我们简单说明一下`Image`和`Container`的关系，`Image`顾名思义就是镜像的意思，我们可以把它理解为一个执行环境（env），当我们执行了`docker run`命令之后，`Dock`就会根据当前的`Image`创建一个新的`Container`，`Container`更像是一个程序运行的沙箱，它们互相独立，但是都是运行在`Image`创建的执行环境之上。
+接下来我们简单说明一下`Image`和`Container`的关系，`Image`顾名思义就是镜像的意思，我们可以把它理解为一个执行环境（env），当我们执行了`docker run`命令之后，`Dock`就会根据当前的`Image`创建一个新的`Container`，`Container`是一个程序运行的沙箱，它们互相独立，但是都是运行在`Image`创建的执行环境之上。
 
-接下来我们就启动一段小程序，基于我们刚才下载的`CentOS`镜像，我们启动一个`Container`，让控制台输出一行`hello world`。
+接下来我们就启动一段小程序，基于我们刚才下载的`CentOS`镜像，启动一个`Container`，让控制台输出一行`hello world`。
 	
 	$ sudo docker run b15 /bin/echo 'Hello world'
 	Hello world
@@ -219,7 +219,7 @@
 
 我们看到`026ec6c8802c`这个每隔一秒打印`Hello World`的`Container`4分钟前创建，并且一直在运行，已经运行了4分钟了，另外一个`cc5105d4e6f5`就是一次性打印`Hello World`的`Container`已经退出了。
 	
-由于那个每隔一秒执行的`Container`永远不会停止，我们现在需要手动把它删除，只需要在删除`Container`时加上强行的参数`-f`即可。
+由于那个每隔一秒执行的`Container`永远不会停止，我们现在需要手动把它删除，删除运行中的`Container`，需要加上参数`-f`。
 
 	$ sudo docker rm -f 026
 	026
@@ -229,7 +229,7 @@
 ##文件卷标加载
 上一节我们学习了`Container`的基本概念，并启动了几个输出`Hello World`的例子，初步理解了`Container`的读者可能会把`Docker`的`Container`理解为一个虚拟机，虽然这并不完全正确，但是在本节我不会去纠正他，这样理解对我们深入学习`Docker`是有所帮助的，在接下来的一节，会专门针对这个问题进行讨论。
 
-我们可能有这样的需求，应用程序跑在`Container`里，但是日志我们不想记录在里面，因为万一`Image`升级，我们就必须重新执行`docker run`命令，这样日志文件处理就比较麻烦了，而且记录在`Container`文件系统里的日志也不方便我们查看。这时候就需要将主机的文件卷标挂载到`Container`中去了，在`Container`中写入和读取的某个文件目录，其实就是主机的文件，我们通过参数`-v`把主机文件映射到`Container`中。
+我们可能有这样的需求，应用程序跑在`Container`里，但是日志我们不想记录在里面，因为万一`Image`升级，我们就必须重新执行`docker run`命令，这样日志文件处理就比较麻烦了，而且记录在`Container`文件系统里的日志也不方便我们查看。这时候就需要将主机的文件卷标挂载到`Container`中去，在`Container`中写入和读取的某个文件目录，其实就是主机的文件，我们通过参数`-v`把主机文件映射到`Container`中。
 
 下面的命令就是把本机的`/etc`目录挂载到`Container`里的`/opt/etc`下面，并且打印`Container`的`/opt/etc`目录。
 	
@@ -246,7 +246,7 @@
 
 参数`-v`后面的冒号左侧部分是本地主机路径，冒号右侧是对应`Container`中的路径，`--rm=true`表示这个`Container`运行结束后自动删除。
 
-如果想要挂载后的文件是只读，需要在这样挂载。
+如果想要挂载后的文件是只读，需要这样挂载。
 
 	-v /etc/:/opt/etc/:ro #read only
 
@@ -272,11 +272,11 @@
 
 	$ sudo docker pull redis:latest #下载官方的redis最新镜像，耐心等待一段时间
 
-一般我们使用`docker pull`命令后面都会跟着版本号（`2.8.19`截稿时`redis`的最新版）或者`latest`，这样不用重复的去下载这个镜像的老版本，可以加快速度。接着我们执行命令，启动`redis`镜像的`Container`，开启`redis-server`持久化服务。
+一般我们使用`docker pull`命令后面都会跟着版本号（例如：`2.8.19`是截稿时`redis`的最新版）或者`latest`，这样不用重复的去下载这个镜像的老版本，可以加快速度。接着我们执行命令，启动`redis`镜像的`Container`，开启`redis-server`持久化服务。
 
 	$ sudo docker run --name redis-server -d redis redis-server --appendonly yes
 
-然后我们再启动一个`redis`镜像的`Container`作为客户端连接我们刚才启动的`redis-server`
+然后我们再启动一个`redis`镜像的`Container`作为客户端，连接我们刚才启动的`redis-server`
 
 	$ sudo docker run --rm=true -it --link redis-server:redis redis /bin/bash
 
@@ -284,7 +284,7 @@
 
 	redis@7441b8880e4e:/data$ env
 
-当前控制台在主机中还是在`Container`中，主要根据`$`符号左侧的用户名来区分，上面的命令将打印`Container`里系统的环境变量，输出如下。
+`ssh`当前控制台是在主机中还是在`Container`中，主要根据`$`符号左侧的用户名来区分，上面的命令将打印`Container`里系统的环境变量，输出如下。
 
 	REDIS_PORT_6379_TCP_PROTO=tcp
 	REDIS_ENV_REDIS_DOWNLOAD_URL=http://download.redis.io/releases/redis-2.8.19.tar.gz
@@ -317,9 +317,9 @@
 ##不要用ssh连接到你的Container盒子
 学习了前面几个章节，相信读者已经不算是一个`Docker`新手了，越来越多的情况，会让你想到：“怎么进入到我的`Container`中去呢？”，其他人会告诉他：“ 在你的`Container`里面装一个`ssh server`，这样你就可以连入你的`Container`了。” 但是这是一种糟糕的做法，下面我将告诉大家为什么这么做是错误的，如果实在万不得已，我们又能用什么方式来替代它。
 
-在`Container`里安装一个`ssh server`是非常诱人的，因为这样我们就可以直接连接`Container`，并且进入它的内部，我们可以使用前面几节学到的端口映射方式，让本地的`ssh`客户端连入`Container`。
+在`Container`里安装一个`ssh server`是非常诱人的，因为这样我们就可以直接连接到`Container`了，并且进入它的内部，我们可以使用前面几节学到的端口映射方式，让本地的`ssh`客户端连入`Container`。
 
-所以也不奇怪，人们会建议，在`Container`中创建一个`ssh server`，但是我们在这么做之前需要考虑以下问题。
+所以也不奇怪，人们会建议，在`Container`中创建一个`ssh server`，但是我们在这么做之前需要考虑以下几个问题。
 
 1、你需要`ssh`来干什么？
 
@@ -334,9 +334,11 @@
 一个更好的办法是将这些东西放在一个文件卷标中，它能工作，但是也有显著的缺点，你必须保证你的`Container`没有对这个文件卷标有写的权限，否则可能会污染你的密钥和密码，从而造成你无法登录这个`Container`。而且事情可能因为你为多个`Container`共享这些东西而变的更加难以管理。
 
 3、你如何管理你的密码升级
+
 `SSH server`是非常安全的，但是一旦你的密钥或密码泄漏，你不得不升级所有使用`SSH`的`Container`，并且重启他们。这也可能让`memcache`这样的内存缓存服务器的缓存将全部丢失，你不得不重建缓存。
 
 4、你是否需要加入`SSH server`就能工作？
+
 不是的，你还需要加入进程管理软件，`Monit`或`Supervisor`等监控软件，让应用开启多个进程运行。换而言之，你把一个简单的`Container`转变为一个复杂的东西了。如果你的应用停止了，你不得不从你的进程管理软件那里获得信息，因为`Docker`只能管理单进程。
 
 但是不使用`ssh`，我们改如何做以下事情呢？
@@ -361,7 +363,7 @@
 
 `nsenter`项目地址：[https://github.com/jpetazzo/nsenter](https://github.com/jpetazzo/nsenter)
 
-我们可以通过命令来安装`nsenter`，这个命令会自己去下载`nsenter`镜像，并且这条命令会把`nsenter`命令安装到主机的`/usr/bin`中，我们就可以很方便的使用它了。
+我们可以通过命令来安装`nsenter`，这个命令会自己去下载`nsenter`镜像，并且会把`nsenter`命令安装到主机的`/usr/bin`中，我们就可以很方便的使用它了。
 
 	$ sudo docker run -v /usr/local/bin:/target jpetazzo/nsenter
 
@@ -374,7 +376,7 @@
 	$ sudo docker inspect --format {{.State.Pid}} 9479
 	7026
 
-这里我们得到了`id`为`9479`的`Container`它的`pid`号为7026，这句话有点拗口，其实我们只需关心7026这个`pid`号就可以了。我们根据刚才获得的`pid`就能顺利进入到`Container`的内部了。
+这里我们得到了`id`为`9479`的`Container`的`pid`号为7026，这句话有点拗口，其实我们只需关心7026这个`pid`号就可以了。我们根据刚才获得的`pid`就能顺利进入到`Container`的内部了。
 
 	$ sudo nsenter --target $PID --mount --uts --ipc --net --pid
 
@@ -382,7 +384,7 @@
 
 	$ sudo nsenter --target 7026 --mount --uts --ipc --net --pid
 
-如果你想要远程访问这个`Container`，可以通过`ssh`链接到你的主机，并且使用`nsenter`连接进入到`Container`，所以大家是不是觉得完全没有必要在`Container`里
+如果你想要远程访问这个`Container`，可以通过`ssh`链接到你的主机，并且使用`nsenter`连接进入到`Container`，所以大家是不是觉得完全没有必要在`Container`里安装一个`SSH server`了吧。
 
 如果在`pull`镜像``出现错误，那估计是`CentoOS`内核的版本，所以尽量使用较新的内核版本来启动`Docker`，如出现下面的错误可能就是内核版本过低。
 	
@@ -406,7 +408,7 @@
 	$ cp /var/lib/docker/devicemapper/mnt/<containid>/rootfs/docker-enter /usr/local/bin/
 
 ##配置我的DockerImages镜像和发布应用
-我们已经学习到了很多关于`Docker`的知识，`Docker`之旅也渐渐接近尾声了，本节我们就要简单制作一个`Node.js`的`Express.js`环境的镜像，通过`pm2`来启动我们的`web`应用，然后发布到`Docker`云上；我们还会使用`redis`数据库来暂存用户的访问次数；在`Node.js`应用前端，我们需要放置一个`Nginx`作为反向代理，现在让我们开始吧。
+我们已经学习了很多关于`Docker`的知识，`Docker`之旅也渐渐接近尾声了，本节我们就要简单制作一个`Node.js`的`Express.js`环境的镜像，通过`pm2`来启动我们的`web`应用，然后发布到`Docker`云上；我们还会使用`redis`数据库来暂存用户的访问次数；在`Node.js`应用前端，我们需要放置一个`Nginx`作为反向代理，现在让我们开始吧。
 
 第一步，我们把需要用到的`Image`镜像统统的都下载到本地，执行如下命令，等待片刻就能下载成功了，为了加快下载速度和本书代码的兼容性，我们指定了下载各个镜像的版本，读者可以根据当时的最新版本进行下载。
 
@@ -422,7 +424,7 @@
 	redis               2.8.19              5e0586116d76        5 days ago          110.8 MB
 	jpetazzo/nsenter    latest              6ed3da1d7fa6        9 weeks ago         367.7 MB
 
-我们现在本地创建一个一会部署`Node.js`应用的目录，然后写上`package.json`
+我们现在本地创建一个一部署`Node.js`应用的目录，然后写上`package.json`
 
 	$ mkdir /var/node/
 	$ mkdir /var/node/docker_node
@@ -434,7 +436,7 @@
 	$ npm install pm2 -g
 	$ pm2 -v
 	0.12.3
-	#考虑中国的网络，再装下cnpm更靠谱些
+	#考虑国内的网络，再装下cnpm更靠谱些
 	$ npm install cnpm -g --registry=https://registry.npm.taobao.org
 	#从Container的bash退出
 	$ exit
@@ -551,7 +553,9 @@
 
 接下来就轮到作为反向代理的`Nginx`出场了。
 	
-由于使用`Docker`的`Container`它的ip地址是动态变化的，所以我们想要使用`Nginx`反向代理，配置写起来比较困难，这里我们就暂不使用`Docker`容器来管理`Nginx`了，我们尝试使用`Nginx`的分支版本`openresty`来做反向代理，`openresty`比`Nginx`内置了`ngx-lua`模块，让`Nginx`具有逻辑处理能力了，我们先用`yum`安装依赖，然后编译安装`openresty`。
+由于使用`Docker`的`Container`它的ip地址是动态变化的，所以我们想要使用`Nginx`反向代理，配置写起来比较困难，这里我们就暂不使用`Docker`容器来管理`Nginx`了，而是直接编译安装`Nginx`。
+
+我们使用`Nginx`的分支版本`openresty`来做反向代理，`openresty`比`Nginx`内置了`ngx-lua`模块，让`Nginx`具有逻辑处理能力，我们用`yum`安装依赖，然后编译安装`openresty`。
 
 	yum install -y gcc gcc-c++ kernel-devel
 	yum install -y readline-devel pcre-devel openssl-devel openssl zlib zlib-devel pcre-devel
@@ -604,9 +608,9 @@
 	service docker restart
 
 ##什么是Jenkins
-`Jeknins`是一个用`java`开发的开源软件项目，旨在提供一个开放易用的软件平台，使持续集成变成可能，它的前身就是大名鼎鼎的`Hundson`，`Hudson`是收费的商用版本，`Jenkins`是它的一个免费开源的分支，所以我们选择使用`Jenkins`，毕竟能省则省么。
+`Jeknins`是一个由`java`开发的开源软件项目，旨在提供一个开放易用的软件平台，使持续集成变成可能，它的前身就是大名鼎鼎的`Hundson`，`Hudson`是收费的商用版本，`Jenkins`是它的一个免费开源的分支，所以我们选择使用`Jenkins`，毕竟能省则省么。
 
-那什么叫做持续集成呢？以下这些概念摘来自`IBM`团队的定义。
+那什么叫做持续集成呢？以下这些概念摘自`IBM`团队的定义。
 
 随着软件开发复杂度的不断提高，团队开发成员间如何更好地协同工作以确保软件开发的质量已经慢慢成为开发过程中不可回避的问题，持续集成正是针对这一类问题的一种软件开发实践。它倡导团队开发成员必须经常集成他们的工作，甚至每天都可能发生多次集成。而每次的集成都是通过自动化的构建来验证，包括自动编译、发布和测试，从而尽快地发现集成错误，让团队能够更快的开发内聚的软件。
 
@@ -632,7 +636,7 @@
 	#截稿时，docker中最新版本的jenkins是1.554.1
 	docker pull jenkins:1.554.1
 
-拉取好镜像之后，我们先创建目录，然后就可以启动`Jenkins`的`Container`了，我们要把`Jenkins`的文件存储地址挂载到主机上，万一以后`Jenkins`的服务器重装或者迁移，我们都可以很方便的把之前的项目配置保留，否则就只能进入`Container`的文件系统里去拷贝了。另外一半`Jenkins`会搭建在内网的服务器上，而非生产服务器，如果外网能直接访问，可能会造成一定的风险。
+拉取好镜像之后，我们先创建目录，然后就可以启动`Jenkins`的`Container`了，我们要把`Jenkins`的文件存储地址挂载到主机上，万一以后`Jenkins`的服务器重装或者迁移，我们都可以很方便的把之前的项目配置保留，否则就只能进入`Container`的文件系统里去拷贝了。另外`Jenkins`会搭建在内网的服务器上，而非生产服务器，如果外网能直接访问，可能会造成一定的风险。
 	
 	#创建本地的Jenkins配置文件目录
 	$ mkdir /var/jenkins_home
@@ -647,7 +651,7 @@
 
 进入`系统管理`->`管理插件`->`可选插件`，在右上侧的筛选框中输入`git`，并安装`Git Plugin (This plugin integrates GIT with Jenkins.)`这个插件；然后再安装插件`Publish Over SSH (Send build artifacts over SSH)`插件，检查网络这一步骤可能时间较长，请耐心等待。
 
-插件安装完成后，我们需要重新启动`Jenkins`，插件安装完毕后，会自动重启，如果自动重启失败，可以自进入`Jeknins`的目录`/restart`手动重启。
+插件安装完成后，我们需要重新启动`Jenkins`，一般安装完毕后会自动重启，如果自动重启失败，可以自进入`Jeknins`的目录`/restart`手动重启。
 
 	#进入目录手动重启
 	http://192.168.1.116:49001/restart
@@ -656,7 +660,7 @@
 
 ![](http://7u2pwi.com1.z0.glb.clouddn.com/jenkins_ex11.png)
 
-重启完成之后，我们进入`系统管理`->`系统设置`来对插件进行一下简单的设置，增加远程的服务器配置。如下图，填入我们待发布的生产服务器的Ip地址，`ssh`端口以及用户名密码等信息就可以了。如果远程服务器是通过`key`来登录的，我们还需要把`key`的存放路径写上。
+重启完成之后，我们进入`系统管理`->`系统设置`来对插件进行一下简单的设置，增加远程的服务器配置。如下图，填入我们待发布的生产服务器的Ip地址，`ssh`端口以及用户名密码等信息。如果远程服务器是通过`key`来登录的，我们还需要把`key`的存放的路径写上。
 
 ![](http://7u2pwi.com1.z0.glb.clouddn.com/jenkins_ex3.png)
 
@@ -674,7 +678,7 @@
 
 ![](http://7u2pwi.com1.z0.glb.clouddn.com/jenkins_ex6.png)
 
-把配置页往下滚动，在`构建`一栏出，下拉菜单点击展开，如下图选择`Execute shell`。`构建`表示我们如何向生产服务器去发布一个应用，简而言之，就是把我们原来手动要做的操作和要输入的命令，通过配置来自动执行。发布一个`Node.js`的程序由于不需要编译，所以大致的流程如下：
+把配置页往下滚动，在`构建`一栏处，下拉菜单点击展开，如下图选择`Execute shell`。`构建`表示我们如何向生产服务器去发布一个应用，简而言之，就是把我们原来手动要做的操作和要输入的命令，通过配置来自动执行。发布一个`Node.js`的程序由于不需要编译，所以大致的流程如下：
 
 1、`Jenkins`从代码库(`svn`或`git`)获取最新代码；
 
@@ -742,7 +746,7 @@
 ![](http://7u2pwi.com1.z0.glb.clouddn.com/jenkins_ex12.png)
 
 
-至此，我们的项目配置完毕，点击页面底部的保存按钮将会返回到工程的首页，这时候我们可以点击左侧的`立即构建`，就可以看到构建历史中小球在闪烁和构建进度条了，如果构建出错，构建历史中就会有红色小球，成功的话就是蓝色的小球，黄色的小球表示构建时虽然有错误，但最终还是成功的，不过即使这样我们也是值得注意的。
+至此，我们的项目配置完毕，点击页面底部的保存按钮将会返回到工程的首页，这时候我们可以点击左侧的`立即构建`，就可以看到构建历史中小球在闪烁和构建进度条了，如果构建出错，构建历史中就会有红色小球，成功的话就是蓝色的小球，黄色的小球表示构建时虽然有错误，但最终还是成功的，不过这时我们也是要注意的。
 
 ![](http://7u2pwi.com1.z0.glb.clouddn.com/jenkins_ex9.png)
 
@@ -753,10 +757,10 @@
 
 耐心等待一会，构建成功之后，我们再打开浏览器，访问之前的`Node.js`访问计数网站，我们的代码修改就被成功的发布了。以后每次有代码改动，就再也不需要使用`ssh`登录到远程服务器，执行重复劳动的操作了，只需要进入`jenkins`然后在项目主页点击`立即构建`，另外如果需要同时部署多台机器，只需要在构建的时候添加多台机器的配置脚本就可以了。
 
-如果在最后一步构建失败，那么请读者自行在`Jenkins`的控制台查看出错的原因，然后相应的修改配置脚本就可以了。
+如果在最后一步构建失败，那么请读者自行在`Jenkins`的控制台查看出错的原因，然后相应的修改配置脚本。
 
 ##小结
-本章节我们初步学习了`Docker`的使用方法，基本上算是入门了`Docker`，对于`Docker`构建应用还有一个比较好的办法就是使用`Dockerfile`，`Dockerfile`更加的清晰和简单，但是我们在使用`Dockerfile`之前还需要学习一下它的基本语法，这个就留给读者自行研究了。
+本章节我们初步学习了`Docker`的使用方法，基本上算是入门了`Docker`，对于`Docker`构建应用还有一个比较好的办法就是使用`Dockerfile`，`Dockerfile`更加的清晰和简单，我们在使用`Dockerfile`之前还需要学习一下它的基本语法，这个就留给读者自行研究了。
 
 `Docker`的魅力就是没有局限，如果我们偷懒，完全可以把整个运行环境，包括`db`，`Nginx`，`Node.js`运行环境等打包成一个镜像，这样每次部署我们只需要启动一个`Container`就可以了，不过这不是`Docker`推荐的做法。总之我们可以充分发挥想象，尽情的体验`Docker`带给我们的乐趣。
 
