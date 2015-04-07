@@ -490,7 +490,6 @@
 	  "dependencies": {
 	       "express":"4.10.2",
 	       "redis":"0.12.1",
-	       "redis-connection-pool":"0.0.5"
 	   },
 	  "engines": {
 	    "node": ">=0.10.0"
@@ -500,15 +499,16 @@
 然后我们创建`app.js`，启动并监听8000端口，同时通过`redis`记录访问次数。
 
 	var express = require('express');
-	var reidsPool = require('redis-connection-pool')
+	var redis = require("redis");
 	var app = express();
 	//从环境变量里读取redis服务器的ip地址
-	var redisHost = process.env['REDIS_PORT_6379_TCP_ADDR'] || '127.0.0.1'
-	var redisPort = process.env['REDIS_PORT_6379_TCP_PORT']	|| 6379
+	var redisHost = process.env['REDIS_PORT_6379_TCP_ADDR'];
+	var redisPort = process.env['REDIS_PORT_6379_TCP_PORT'];
 	
-	var reidsClient = reidsPool('myRedisPool', {PORT:redisPort, HOST:redisHost, MAX_CLIENTS:100})
+	var reidsClient = redis.createClient(redisPort, redisHost);
 	
 	app.get('/', function(req, res){
+		  console.log('get request')
 		  reidsClient.get('access_count', function(err, countNum){
 		  		if(err){
 		  			return res.send('get access count error')
