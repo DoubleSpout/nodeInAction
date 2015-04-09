@@ -17,11 +17,11 @@
 
 `Docker`是一个为开发者和运维管理员搭建的开放平台软件，可以在这个平台上创建、管理和运行生产应用。`Docker Hub`是一个云端的服务，可以用它共享应用或自动化工作流。`Docker`能够从组件快速的开发应用，并且可以轻松地创建开发环境、测试环境和生产环境。
 
-通俗点说，`Docker`是一个开源的应用容器引擎，可以让开发者打包自己的应用以及依赖包到一个可移植的容器中，然后发布到任何流行的`Linux`机器上，也可以实现虚拟化。`Docker`容器完全使用沙箱机制，独立于硬件、语言、框架、打包系统，相互之间不会有任何接口。几乎没有任何性能开销,便可以很容易地在机器和数据中心中运行。最重要的是,他们不依赖于任何语言、框架或包括系统。
+通俗点说，`Docker`是一个开源的应用容器引擎，可以让开发者打包自己的应用以及依赖包到一个可移植的容器中，然后发布到任何流行的`Linux`机器上，也可以实现虚拟化。`Docker`容器完全使用沙箱机制，独立于硬件、语言、框架、打包系统，相互之间不会有任何接口。几乎没有任何性能开销，便可以很容易的在机器和数据中心中运行。最重要的是,他们不依赖于任何语言、框架或包括系统。
 
 比如，作为一名开发者，在自己电脑上开发应用程序时，一切都运行正常，但如果将其部署到其他环境中就可能不能正常工作了。由于开发者使用了自己喜欢的栈、开发语言和版本，所以当把它们部署到新的环境，如测试环境或生产环境时就会出现问题。这时，运维工程师和开发者需要花费大量时间、精力、财力，通过进行大量沟通才能达成一致。但如果使用`Docker`进行开发，则可以将所有一切封装到一个或者几个可相互通讯的容器中，而这个容器自身就可以完成所有工作。之后，开发者只需将该容器部署到其它环境中即可。
 
-其次，相对于虚拟机，由于`Docker`容器不必运行操作系统，所以其体积更小。底层的`Linux`容器已经被包含在内核当中。这意味着镜像体积非常小、非常快。如果虚拟机的体积以GB为单位，需要一到两分钟的启动时间，那么容器就只需以MB为单位，并且可以在几毫秒内启动。这可以帮助加速开发进度，允许开发者可以轻松地移动容器。
+其次，相对于虚拟机，由于`Docker`容器不必运行操作系统，所以其体积更小。底层的`Linux`容器已经被包含在内核当中。这意味着镜像体积非常小、非常快。虚拟机的体积以GB为单位，需要一到两分钟的启动时间，而容器就只以MB为单位，并且可以在几毫秒内启动。这可以帮助加速开发进度，允许开发者可以轻松地移动容器。
 
 此外，由于容器体积小，可以快速部署，所以有助于开发者进行超大规模部署。相对于虚拟机，开发者可以使用更少的存储空间、内存和CPU，因为其在性能方面基本上不需要系统开销。
 
@@ -30,21 +30,21 @@
 
 `Nginx`想必大家都不会陌生，不过在这里我还是要不厌其烦地再介绍一下。
 
-`Nginx`（发音同engine x）是一款由俄罗斯程序员`Igor Sysoev`所开发轻量级的网页服务器、反向代理服务器以及电子邮件（`IMAP/POP3`）代理服务器。起初是供俄国大型的门户网站及搜索引擎`Rambler`（俄语：Рамблер）使用。因它的稳定性、丰富的功能集、示例配置文件和低系统资源的消耗而闻名。此软件`BSD-like`协议下发行，可以在`UNIX`、`GNU/Linux`、`BSD`、`Mac OS X`、`Solaris`，以及`Microsoft Windows`等操作系统中运行。
+`Nginx`（发音同engine x）是一款由俄罗斯程序员`Igor Sysoev`开发的轻量级网页服务器、反向代理服务器以及电子邮件（`IMAP/POP3`）代理服务器。起初是供俄国大型的门户网站及搜索引擎`Rambler`（俄语：Рамблер）使用。因它的稳定性、丰富的功能集、示例配置文件和低系统资源的消耗而闻名。此软件`BSD-like`协议下发行，可以在`UNIX`、`GNU/Linux`、`BSD`、`Mac OS X`、`Solaris`，以及`Microsoft Windows`等操作系统中运行。
 
 我们在这里正是看重了`Nginx`出色的`Http`反向代理能力，所以才把它放置在`Node.js`前端，用来处理我们的各种需求。可能有读者不理解反向代理这个名词，我在这里稍作解释。
 
-有反向代理就肯定有正向代理，正向代理我们接触的很多，比如我们想访问一些国外的网站，可是又由于某些原因无法正常打开或者打开缓慢，这时候我们通过香港的`Http`代理就可以正常的访问一些国外的网站了，在此香港的这个`Http`代理就是正向代理。反向代理的情况正好相反，比如我们有一个对外的api服务`api.nodeAction.com`，初期我们启动一台服务器，一个`Node.js`进程就可以完成负载，但是后期随着访问量的加大，发现一个进程，一台服务器已经不能满足我们的需要了。这时候`Nginx`就可以发挥自己反向代理的能力，可以在`Nginx`后端添加多个服务器或启动多个进程来分担访问压力。在这里，`Nginx`的作用就是反向代理了。
+有反向代理就肯定有正向代理，正向代理我们接触的很多，比如我们想访问一些国外的网站，可是又由于某些原因无法正常打开或者打开缓慢，这时候我们通过香港的`Http`代理就可以正常的访问一些国外网站了，在此香港的这个`Http`代理就是正向代理。反向代理的情况正好相反，比如我们有一个对外的api服务`api.nodeInAction.com`，初期我们启动一台服务器，一个`Node.js`进程就可以完成负载，但是后期随着访问量的加大，发现一个进程，一台服务器已经不能满足我们的需要了。这时候`Nginx`就可以发挥自己反向代理的能力，可以在`Nginx`后端添加多个服务器或启动多个进程来分担访问压力。在这里，`Nginx`的作用就是反向代理了。
 
 理解了`Nginx`的反向代理，我就要说明为什么把它放在`Node.js`的应用之前，大致有如下几个好处。
 
 1、静态文件性能
 
-`Node.js`的静态文件处理性能受制于它的单线程异步`I/O`的模型，注定了静态文件性能不会很好（所以某些情况下，单线程异步`I/O`并不是性能的代名词）。在一台普通的4CPU服务器上，使用`Nginx`处理静态文件的性能基本上是纯`Node.js`的2倍以上，所以我们应该避免在生产环境下，直接使用`Node.js`来处理静态文件。关于`Node.js`处理静态文件的更多内容，在我撰写的另一本`《Node.js实战》`书中有详细对比和介绍，欢迎读者购买阅读。
+`Node.js`的静态文件处理性能受制于它的单线程异步`I/O`模型，注定了静态文件性能不会很好（所以某些情况下，单线程异步`I/O`并不是性能的代名词）。在一台普通的4CPU服务器上，使用`Nginx`处理静态文件的性能基本上是纯`Node.js`的2倍以上，所以我们应该避免在生产环境下，直接使用`Node.js`来处理静态文件。关于`Node.js`处理静态文件的更多内容，在我撰写的另一本`《Node.js实战》`书中有详细对比和介绍，欢迎读者购买阅读。
 
 2、反向代理规则
 
-有时会存在反向代理服务器配置规则多样化的情况，有时我们希望配置较好的机器能够分担更多的压力，有时又因为`session`的关系，我们需要将同一来源IP的客户端总是转发到同一个进程上，诸如此类这些规则，使用`Nginx`的配置文件，就可以很简单地去实现这些。
+有时会存在反向代理服务器配置规则多样化的情况，有时我们希望配置较好的机器能够分担更多的压力，有时又因为`session`的关系，我们需要将同一来源IP的客户端总是转发到同一个进程上，诸如此类这些规则，使用`Nginx`的配置文件，就可以很简单地去实现。
 
 3、扩展性
 
@@ -56,18 +56,18 @@
 
 5、安全性
 
-`Nginx`已经被各大互联网公司广泛应用，经过一些配置就可以有效抵挡类似`slowloris`等的`DoS`攻击，而`Node.js`在这方面做的还不够，关于`Node.js`开发安全方面的更多内容，可以参考我的另一本`《Node.js实战》`一书，专门有一个章节来讨论如何更安全地开发`Node.js`的`web`应用。
+`Nginx`已经被各大互联网公司广泛应用，经过一些配置可以有效抵挡类似`slowloris`等的`DoS`攻击，而`Node.js`在这方面做的还不够，关于`Node.js`开发安全方面的更多内容，可以参考我的另一本`《Node.js实战》`一书，专门有一个章节来讨论如何更安全地开发`Node.js`的`web`应用。
 
 6、运维管理
 
-可能我们目前限于资金的原因，只有一台`web`服务器，同时有多个站点需要占用`80`端口，这时我们只需要让`Node.js`服务监听本地的特殊端口，例如`3000`,通过`Nginx`的反向代理配置，就可以完成多个站点域名指向一台机器的需求了。当然，如果公司配置了专门的运维部门来管理服务器，相信他们对`Nginx`的熟悉程度一定远远大于`Node.js`，他们自己就可以轻松地修改一些配置，而不用来麻烦我们。
+可能我们目前限于资金的原因，只有一台`web`服务器，同时有多个站点需要占用`80`端口，这时我们只需要让`Node.js`服务监听本地的特殊端口，例如`3000`，通过`Nginx`的反向代理配置，就可以完成多个站点域名指向一台机器的需求了。当然，如果公司配置了专门的运维部门来管理服务器，相信他们对`Nginx`的熟悉程度一定远远大于`Node.js`，他们自己就可以轻松地修改一些配置，而不用来麻烦我们。
 
 所以，一个好习惯就是，在生产环境中，永远把`Nginx`放置在`Node.js`的前端，对性能、安全性和将来的扩展性都有益处。
 
 ##安装Docker和下载Images镜像
 在介绍完`Nginx`之后，我们继续`Docker`之旅，在Docker官网有详细的各个系统安装流程，这里我就介绍下`CentOS`下的安装，其他系统安装地址详见：[https://docs.docker.com/](https://docs.docker.com/)
 
-对于在`CentOS 7`下的用户，就非常简单，直接运行如下命令，就可以安装最新版本的`Docker`
+对于在`CentOS 7`下的用户，安装非常简单，直接运行如下命令，就可以安装最新版本的`Docker`。
 
 	$ sudo yum install docker
 
@@ -86,11 +86,25 @@
 	$ sudo service docker start
 	$ sudo chkconfig docker on
 
-`Docker`服务已经安装并启动，我们需要下载`Image`镜像，镜像就是我们应用运行的环境，比如我们可以自己装好`Node.js`和`npm`然后发布到`Docker Hub`上，供自己或者别人下载，我们也可以下载安装一些官方的镜像，把它作为自己镜像的基础，下面我们先下载`CentOS`镜像。
+我们可以输入如下命令，检查`Dcoker`进程是否已经启动。
+
+	$ ps -ef|grep docker
+
+如果发现`Docker`进程未成功启动，就需要进入`/var/log/`目录下，查看`Docker`日志文件的信息了，可能`CentOS 6.5`用户会报出如下错误。
+
+	/usr/bin/docker: relocation error: /usr/bin/docker: symbol dm_task_get_info_with_deferred_remove, version Base not defined in file libdevmapper.so.1.02 with link time reference
+
+执行如下命令可以修复，然后再重新启动`Docker`服务。
+
+	$ yum-config-manager --enable public_ol6_latest
+	$ yum install -y device-mapper-event-libs
+	$ yum update -y device-mapper-libs
+
+现在`Docker`服务已经安装并启动，我们需要下载`Image`镜像，镜像就是我们应用运行的环境，比如我们可以自己装好`Node.js`和`npm`然后发布到`Docker Hub`上，供自己或者别人下载，我们也可以下载安装一些官方的镜像，把它作为自己镜像的基础，下面我们先下载`CentOS`镜像。
 
 	$ sudo docker pull centos:7
 
-等待片刻后，就可以下载完毕了，执行命令查看镜像是否安装成功。
+等待片刻后，就能下载完毕，执行命令查看镜像是否安装成功。
 
 	$ sudo docker images centos
 	REPOSITORY          TAG                 IMAGE ID            CREATED             VIRTUAL SIZE
@@ -102,10 +116,10 @@
 
 ![](http://7u2pwi.com1.z0.glb.clouddn.com/dockerBrowser.png)
 
-上图是在`Docker`官网里进行搜索`Node.js`关键字的结果列表，我们可以看到被人赞星星的次数和下载次数，两者分数越高，说明这个镜像越值得信赖。
+上图是在`Docker`官网里进行搜索`Node.js`关键字的结果列表，我们看到被人赞星星的次数和下载次数，两者分数越高，说明这个镜像越值得信赖。
 	
 ##Docker常用命令
-在我们深入`Docker`学习之前，先罗列一些`Docker`的常用命令，一时半会看不懂没关系，随着我们深入学习，常用命令很容易掌握。关于详细命令的相关说明，执行如下命令，就可以获取帮助。
+在我们深入`Docker`学习之前，先罗列一些`Docker`的常用命令，一时半会看不懂没关系，随着我们深入学习，常用命令很容易掌握。关于详细命令的相关说明，输入如下命令，能获取帮助。
 
 	$ docker -h
 
@@ -125,7 +139,7 @@
 	
 	$ sudo docker run -t -i centos /bin/bash
 
-启动`Container`盒子非常重要的命令，我们会在下一节详细介绍`Container`盒子及启动命令
+启动`Container`盒子是非常重要的命令，我们会在下一节详细介绍`Container`盒子及启动命令
 
 3、查看镜像列表，会把本地所有的`images`列出。
 
@@ -139,7 +153,7 @@
 
 	$ sudo docker ps [OPTIONS] 
 
-命令示例：
+命令示例，查看所有运行中或者停止运行的盒子：
 	
 	$ sudo docker ps -a
 
@@ -183,9 +197,7 @@
 	
 	$ sudo docker start 026e
 	
-基本上常用的命令就是这些，读者第一次阅读只需对它们有初略的了解，下面几节会对以上命令做一些详细的介绍。
-
-一般我们会去`Docker`官网上搜索我们需要的镜像，然后通过`docker pull`命令下载到本地，执行`docker run`启动一个容器。下一节我们将详细介绍关于`Docker`的精髓，那就是`Container`。
+基本上常用的命令就是这些，读者第一次阅读只需对它们有初略的了解，随着对`Docker`的不断使用，很容易就能熟练的运用上面的这些命令了。下一节我们将详细介绍关于`Docker`的精髓，那就是`Container`。
 
 ##启动Container盒子
 看了上一节那些眼花缭乱的命令，再加上`Image`、`Container`，大家是不是觉得很头晕，既然下载了`Image`，为什么又会多一个`Container`了呢？在`Docker`世界里，它们之间的关系又是怎样的呢？
@@ -209,7 +221,7 @@
 	Hello world
 	...
 
-命令中的参数`-i`表示同步`Container`的`stdin`，`-t`表示同步`Container`的输出。
+命令中的参数`-i`表示同步`Container`的`stdin`，`-t`表示分配一个伪终端。
 
 上面我们执行了2个`docker run`的任务，其实也就创建了2个独立的`Container`，我们通过命令`docker ps -a`就可以列出所有我们创建过的`Container`了，因为版面显示的原因，我做了部分修改，把`COMMAND`改短了。
 
@@ -217,7 +229,7 @@
 	026ec6c8802c   centos:7  ...      4 minutes   Up 4 minutes               focused_bartik 
 	cc5105d4e6f5   centos:7  ...      4 minutes   Exited (0) 10 minutes ago  determined_pare    
 
-我们看到`026ec6c8802c`这个每隔一秒打印`Hello World`的`Container`4分钟前创建，并且一直在运行，已经运行了4分钟，另外一个`cc5105d4e6f5`，就是一次性打印`Hello World`的`Container`已经退出了。
+我们看到`026ec6c8802c`这个每隔一秒打印`Hello World`的`Container`4分钟前创建，并且一直在运行，已经运行了4分钟。另外一个`cc5105d4e6f5`，就是一次性打印`Hello World`的`Container`已经退出了。
 	
 由于那个每隔一秒执行的`Container`永远不会停止，我们现在需要手动把它删除，删除运行中的`Container`，需要加上参数`-f`。
 
@@ -229,7 +241,7 @@
 ##文件卷标加载
 上一节我们学习了`Container`的基本概念，并启动了几个输出`Hello World`的例子，初步理解`Container`的读者可能会把`Docker`的`Container`理解为一个虚拟机，虽然这并不完全正确，但是在本节我不会去纠正他，这样的理解对我们深入学习`Docker`会有所帮助。接下来的一节，会针对这个问题进行讨论。
 
-我们可能有这样的需求，应用程序跑在`Container`里，但我们不想在里面记录日志，因为万一`Image`升级，我们就必须重新执行`docker run`命令，这样日志文件处理就比较麻烦，而且记录在`Container`文件系统里的日志也不方便我们查看。这时候就需要将主机的文件卷标挂载到`Container`中去，在`Container`中写入和读取的某个文件目录，其实就是主机的文件，我们通过参数`-v`把主机文件映射到`Container`中。
+我们可能有这样的需求，应用程序跑在`Container`里，但我们不想在里面记录日志，因为万一`Image`升级，我们就必须重新执行`docker run`命令，这样日志文件处理就比较麻烦，而且记录在`Container`文件系统里的日志也不方便我们查看。这时候就需要将主机的文件卷标挂载到`Container`中去，在`Container`中写入和读取的某个文件目录，其实就是挂载进去的主机目录，我们通过参数`-v`把主机文件映射到`Container`中。
 
 下面的命令就是把本机的`/etc`目录挂载到`Container`里的`/opt/etc`下面，并且打印`Container`的`/opt/etc`目录。
 	
@@ -263,7 +275,7 @@
 	my_share       pki             rc0.d           rpc        shells              tmpfiles.d
 	...
 
-我们可以看到，这个`ls_etc`这个`Container`打印出来的`/etc`目录是包含我们之前在`etc_share`这个`Container`中创建的`my_share`目录的。	
+我们看到，`ls_etc`这个`Container`打印出来的`/etc`目录是包含我们之前在`etc_share`这个`Container`中创建的`my_share`目录的。	
 
 ##将多个Container盒子连接起来
 上一节我们学习了如何将主机或者`Container`的文件系统挂载起来，本节我们将学习把各个`Container`连接在一起。
@@ -386,7 +398,7 @@
 
 如果你想要远程访问这个`Container`，可以通过`ssh`链接到你的主机，并且使用`nsenter`连接进入到`Container`，所以大家是不是觉得完全没有必要在`Container`里安装一个`SSH server`了吧。
 
-如果在`pull`镜像``出现错误，那估计是`CentoOS`内核的版本，所以尽量使用较新的内核版本来启动`Docker`，如出现下面的错误可能就是内核版本过低。
+如果在`pull`镜像`nsenter`出现错误，那估计是`CentoOS`内核的版本，所以尽量使用较新的内核版本来启动`Docker`，出现下面的错误可能就是内核版本过低。
 	
 	Error pulling image (latest) from jpetazzo/nsenter, Unknown filesystem type on /dev/mapper/...
 
@@ -402,13 +414,13 @@
 	Installing docker-enter to /target
 	cp: cannot create regular file '/target/docker-enter': Permission denied
 
-那就需要手动将`Container`里的`nsenter`命令拷贝到`/usr/local/bin`目录下了，先把`jpetazzo/nsenter`运行起来，然后手动进入文件系统，将命令拷贝出来，其中`containid`就是我们使用`docker ps`查到的`id`，目录`devicemapper`是`centos`下的路径名，在`windows`下是`aufs`。
+那就需要手动将`Container`里的`nsenter`命令拷贝到`/usr/local/bin`目录下了，先把`jpetazzo/nsenter`运行起来，然后手动进入文件系统，将命令拷贝出来，下面的`<containid>`就是我们使用`docker ps`查到的`id`，目录`devicemapper`是`centos`下的路径名，在`windows`下则是`aufs`。
 
 	$ cp /var/lib/docker/devicemapper/mnt/<containid>/rootfs/nsenter /usr/local/bin/
 	$ cp /var/lib/docker/devicemapper/mnt/<containid>/rootfs/docker-enter /usr/local/bin/
 
 ##配置我的DockerImages镜像和发布应用
-我们已经学习了很多关于`Docker`的知识，`Docker`之旅也渐渐接近尾声，本节我们就要简单制作一个`Node.js`的`Express.js`环境的镜像，通过`pm2`来启动`web`应用，然后发布到`Docker`云上；我们还会使用`redis`数据库来暂存用户的访问次数；在`Node.js`应用前端，我们需要放置一个`Nginx`作为反向代理，现在让我们开始吧。
+我们已经学习了很多关于`Docker`的知识，`Docker`之旅也渐渐接近尾声，本节我们就要简单制作一个`Node.js`包含`Express.js`环境的镜像，通过`pm2`来启动`web`应用，然后发布到`Docker`云上；我们还会使用`redis`数据库来暂存用户的访问次数；在`Node.js`应用前端，我们需要放置一个`Nginx`作为反向代理，现在让我们开始吧。
 
 第一步，我们把需要用到的`Image`镜像统统都下载到本地，执行如下命令，等待片刻就能下载成功。为了加快下载速度和本书代码的兼容性，我们指定了下载各个镜像的版本，读者可以根据当时的最新版本进行下载。
 
@@ -416,7 +428,6 @@
 	$ sudo docker pull node:0.10.36
 
 执行`docker images`检查一下这些镜像是否都安装完毕，正常会打印出各个镜像列表。
-
 
 	node                0.10.36             20fbb0b572a2        5 hours ago         705.4 MB
 	node                latest              20fbb0b572a2        5 hours ago         705.4 MB
@@ -429,7 +440,7 @@
 	$ mkdir /var/node/
 	$ mkdir /var/node/docker_node
 
-在创建我们的应用之前，我们从`node 0.10.36`这个镜像上面开始制作自己的镜像，这个镜像只是比`node 0.10.36`镜像多了一个`pm2`的命令。运行如下命令，进入到`Container`的命令行，然后我们安装`pm2`软件。如果读者对`Node.js`比较熟悉，相信对`pm2`不会陌生，它是`Node.js`进程管理软件，可以方便地重启进程和查看`Node.js`日志。
+在创建我们的应用之前，我们从`node 0.10.36`这个镜像基础上，开始制作自己的镜像，这个镜像只是比`node 0.10.36`镜像多了一个`pm2`的命令。运行如下命令，进入到`Container`的命令行，然后我们安装`pm2`软件。如果读者对`Node.js`比较熟悉，相信对`pm2`不会陌生，它是`Node.js`进程管理软件，可以方便地重启进程和查看`Node.js`日志。
 
 	$ sudo docker run -i -t node /bin/bash
 	#进入Container的bash	
@@ -534,7 +545,9 @@
 
 	$ sudo docker run --rm -i -t -v /var/node/docker_node:/var/node/docker_node -w /var/node/docker_node/ doublespout/node_pm2 cnpm install
 
-屏幕会打印依赖包的安装过程，等所有`Node.js`的包安装完成后，这个`Container`会自动退出，然后我们进入`/var/node/docker_node/`目录，就可以看到`node_modules`文件夹，说明我们的依赖包安装完毕了。如果出现`EACCESS`的权限错误，可以执行如下命令，许可`SELinux`的工作状态，不过这只是临时修改，重启系统后会恢复。
+`-w`参数表示命令执行的当前工作目录，屏幕会打印依赖包的安装过程，等所有`Node.js`的包安装完成后，这个`Container`会自动退出，然后我们进入`/var/node/docker_node/`目录，就可以看到`node_modules`文件夹，说明我们的依赖包安装完毕了。
+
+如果出现`EACCESS`的权限错误，可以执行如下命令，许可`SELinux`的工作状态，不过这只是临时修改，重启系统后会恢复。
 
 	su -c "setenforce 0"
 
@@ -553,7 +566,7 @@
 
 接下来就轮到作为反向代理的`Nginx`出场了。
 	
-由于使用`Docker`的`Container`它的ip地址是动态变化的，所以我们想要使用`Nginx`反向代理，配置写起来比较困难，这里我们就暂不使用`Docker`容器来管理`Nginx`了，而是直接编译安装`Nginx`。
+由于使用`Docker`的`Container`它的ip地址是动态变化的，所以我们想要使用`Nginx`容器来做反向代理，配置写起来比较困难，这里我们就暂不使用`Docker`容器来管理`Nginx`了，而是直接编译安装`Nginx`。
 
 我们使用`Nginx`的分支版本`openresty`来做反向代理，`openresty`比`Nginx`内置了`ngx-lua`模块，让`Nginx`具有逻辑处理能力，我们用`yum`安装依赖包，然后编译安装`openresty`。
 
@@ -571,7 +584,7 @@
 	make && make install
 	ln -s /opt/openresty/nginx/sbin/nginx /usr/sbin/
 
-修改`openresty`的默认配置文件，配置文件在`/opt/openresty/nginx/conf/nginx.conf`，我们修改为如下内容，出于篇幅的考虑，此配置文件是精简的配置，不要用于生产环境，大家主要就看`server`那段配置文件内容。
+修改`openresty`的默认配置文件，配置文件在`/opt/openresty/nginx/conf/nginx.conf`，我们修改为如下内容，出于篇幅的考虑，此配置文件是精简的配置，不要用于生产环境，大家主要就看`server`那段配置的内容。
 
 	worker_processes 1;
 	events {
@@ -600,7 +613,7 @@
 	    }
 	}
 
-执行命令`nginx`就可以将`openresty`运行起来，然后打开浏览器，输入`主机IP:3001`就可以正常访问我们之前启动的`Node.js`访问计数应用了。
+执行命令`nginx`就可以将`openresty`运行起来，然后打开浏览器，输入`主机IP:3001`就可以正常访问我们之前启动的`Node.js`访问计数应用。
 
 另外如果遇到在`Container`里无法解析域名，则需要手动增加`dns`服务器，方法如下：
 
@@ -608,7 +621,7 @@
 	service docker restart
 
 ##什么是Jenkins
-`Jeknins`是一个由`java`开发的开源软件项目，旨在提供一个开放易用的软件平台，使持续集成变成可能，它的前身就是大名鼎鼎的`Hundson`。`Hudson`是收费的商用版本，`Jenkins`是它的一个免费开源的分支，所以我们选择使用`Jenkins`，毕竟能省则省。
+`Jeknins`是一款由`java`开发的开源软件项目，旨在提供一个开放易用的软件平台，使持续集成变成可能，它的前身就是大名鼎鼎的`Hundson`。`Hudson`是收费的商用版本，`Jenkins`是它的一个免费开源的分支，所以我们选择使用`Jenkins`，毕竟能省则省。
 
 那什么叫做持续集成呢？以下这些概念摘自`IBM`团队的定义。
 
@@ -642,7 +655,7 @@
 	$ mkdir /var/jenkins_home
 	$ sudo docker run -d --name myjenkins -p 49001:8080 -v /var/jenkins_home:/var/jenkins_home jenkins
 
-这样我们就顺利启动了`Jenkins`的服务，8080端口是`Jenkins`的默认监听端口，我们把它映射到了本地主机的49001端口，注意把搭建`Jenkins`的服务器的`iptables`关闭。一切顺利我们就可以看到`Jeknins`的欢迎页面了，建议去`系统管理`->`管理用户`栏目中创建几个用户和权限，方便多人协同操作。
+这样我们就顺利启动了`Jenkins`的服务，8080端口是`Jenkins`的默认监听端口，我们把它映射到了本地主机的49001端口，注意把搭建`Jenkins`服务器的`iptables`关闭。一切顺利我们就可以看到`Jeknins`的欢迎页面了，建议去`系统管理`->`管理用户`栏目中创建几个用户和权限，方便多人协同操作。
 
 ![](http://7u2pwi.com1.z0.glb.clouddn.com/jenkins_ex2.png)
 
@@ -656,7 +669,7 @@
 	#进入目录手动重启
 	http://192.168.1.116:49001/restart
 
-如果`可选插件`列表为空，那么进入`高级`，点击`立即获取`，就可以去获取`可选插件`了。
+如果`可选插件`列表为空，那么进入`高级`，点击`立即获取`，就可以去获取`可选插件`列表了。
 
 ![](http://7u2pwi.com1.z0.glb.clouddn.com/jenkins_ex11.png)
 
@@ -664,7 +677,7 @@
 
 ![](http://7u2pwi.com1.z0.glb.clouddn.com/jenkins_ex3.png)
 
-可以点击`Test Configuration`来测试服务器是否能连接成功，服务器添加完毕之后，我们现在开始创建一个新的项目。
+可以点击`Test Configuration`按钮来测试服务器是否能连接成功，服务器添加完毕之后，我们现在开始创建一个新的项目。
 
 回到`Jenkins`主页，点击左上角`新建`就可以开启一个新项目，给项目起名`node_access_count`，选择`创建一个自由风格的软件项目`，点击`ok`，就进入了此项目的配置页面。
 
@@ -674,7 +687,7 @@
 
 ![](http://7u2pwi.com1.z0.glb.clouddn.com/jenkins_ex5.png)
 
-点击`ADD`按钮，如图添加`github`帐号，我们就可以通过这个帐号来拉取源代码了。
+点击`ADD`按钮，如图添加`github`帐号，我们就是通过这个帐号来拉取源代码。
 
 ![](http://7u2pwi.com1.z0.glb.clouddn.com/jenkins_ex6.png)
 
@@ -704,7 +717,7 @@
 
 在`SSH SERVER`的下拉菜单中，选择我们刚刚添加的服务器。
 
-在`Source files`一行中，填写我们要发送到远程服务器的文件，我们把刚才打包的文件名`node_access_count.tar.gz`填入，这里的工作路径是本项目下的`workspace`，在这里也就是`/var/jenkins_home/jobs/node_access_count/workspace/`。
+在`Source files`一行中，填写我们要发送到远程服务器的文件，我们把刚才打包的文件名`node_access_count.tar.gz`填入，这里的工作路径是本项目下的`workspace`，在这里就是`/var/jenkins_home/jobs/node_access_count/workspace/`。
 
 在`Remote directory`一行中，填写发送代码包的远程保存地址，我们这里写入`var/`，还记得我们创建这台服务器时，填入的远程默认地址是`/`，所以我们发送到这台服务器上的代码包`node_access_count.tar.gz`会被保存在`/var/node_access_count.tar.gz`此路径下。
 
@@ -745,17 +758,15 @@
 
 ![](http://7u2pwi.com1.z0.glb.clouddn.com/jenkins_ex12.png)
 
-
 至此，我们的项目配置完毕，点击页面底部的保存按钮将会返回到工程的首页，这时候我们可以点击左侧的`立即构建`，就可以看到构建历史中小球在闪烁和构建进度条。如果构建出错，构建历史中就会有红色小球，成功的话就是蓝色小球，黄色小球表示构建时虽然有错误，但最终还是成功的，不过这时我们也是要注意的。
 
 ![](http://7u2pwi.com1.z0.glb.clouddn.com/jenkins_ex9.png)
 
 点击这条构建历史，然后进入`Console Output`还能看到当前的构建进度，如果构建出错也可以从这里找到错误原因，修改构建配置。所以真正部署到生产服务器，由于权限、路径等，在执行命令上可能有所差异，我们编写部署脚本的时候需要多尝试几次，仔细查看打印出错的信息，相应地去修改脚本。
 
-
 ![](http://7u2pwi.com1.z0.glb.clouddn.com/jenkins_ex10.png)
 
-耐心等待一会，构建成功之后，我们再打开浏览器，访问之前的`Node.js`访问计数网站，我们的代码修改就被成功地发布了。以后每次有代码改动，就再也不需要使用`ssh`登录到远程服务器，执行重复劳动的操作了，只需要进入`jenkins`，然后在项目主页点击`立即构建`，另外如果需要同时部署多台机器，只需要在构建的时候添加多台机器的配置脚本就可以了。
+耐心等待一会，构建成功之后，我们再打开浏览器，访问之前的`Node.js`访问计数路径，修改后的代码就被成功地发布了。以后每次有代码改动，就再也不需要使用`ssh`登录到远程服务器，执行重复劳动的操作了，只需要进入`jenkins`，然后在项目主页点击`立即构建`，另外如果需要同时部署多台机器，只需要在构建的时候添加多台机器的配置脚本就可以了。
 
 如果在最后一步构建失败，那么请大家自行在`Jenkins`的控制台查看出错的原因，然后相应地修改配置脚本。
 
